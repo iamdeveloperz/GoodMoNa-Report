@@ -40,6 +40,12 @@ function Invoke-Native([string]$what, [scriptblock]$cmd) {
     & $cmd
     if ($LASTEXITCODE -ne 0) { Fail "$what (종료 코드 $LASTEXITCODE)" }
 }
+# 이미 있는 서비스의 실행 경로를 바꿉니다. sc.exe config binPath= 는 Windows PowerShell 5.1이
+# 경로 속 따옴표를 망가뜨려(종료 코드 1639) 쓰지 않고 레지스트리를 직접 고칩니다. 다음 시작부터 반영.
+function Set-ServicePath([string]$name, [string]$imagePath) {
+    Set-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\$name" -Name ImagePath -Value $imagePath
+    Set-Service $name -StartupType Automatic
+}
 
 $root = Split-Path $PSScriptRoot -Parent          # ...\01
 $appDir = Join-Path $InstallRoot "app"
@@ -110,7 +116,7 @@ if (-not (Get-Service $appService -ErrorAction SilentlyContinue)) {
         -BinaryPathName "`"$exe`"" -StartupType Automatic | Out-Null
 }
 else {
-    Invoke-Native "sc config" { sc.exe config $appService binPath= "`"$exe`"" start= auto }
+    Set-ServicePath $appService "`"$exe`""
 }
 Invoke-Native "sc failure" { sc.exe failure $appService reset= 86400 actions= restart/5000/restart/5000/restart/30000 }
 Start-Service $appService
@@ -167,7 +173,7 @@ if (-not (Get-Service $tunnelService -ErrorAction SilentlyContinue)) {
         -BinaryPathName $bin -StartupType Automatic | Out-Null
 }
 else {
-    Invoke-Native "sc config" { sc.exe config $tunnelService binPath= $bin start= auto }
+    Set-ServicePath $tunnelService $bin
 }
 Invoke-Native "sc failure" { sc.exe failure $tunnelService reset= 86400 actions= restart/5000/restart/5000/restart/30000 }
 Restart-Service $tunnelService -Force   # 바뀐 config.yml 반영 (멈춰 있었으면 시작)
