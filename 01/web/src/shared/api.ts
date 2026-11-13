@@ -53,6 +53,55 @@ export interface CaptureInfo {
   state: CaptureState;
 }
 
+export type NoteStatus = "Queued" | "Transcribing" | "Transcribed" | "Failed";
+export type NoteSource = "InApp" | "FilePick" | "NativeApp";
+
+export interface Segment {
+  startMs: number;
+  endMs: number;
+  text: string;
+}
+
+export interface Note {
+  id: number;
+  visitId: number;
+  seq: number;
+  status: NoteStatus;
+  error: string | null;
+  durationMs: number;
+  source: NoteSource;
+  createdAt: string;
+  audioUrl: string;
+  transcript: { text: string; segments: Segment[]; model: string; runtime: string; elapsedMs: number; createdAt: string } | null;
+}
+
+export interface ReportListItem {
+  visitId: number;
+  patientId: number;
+  patientName: string;
+  birthDate: string;
+  progress: Progress;
+  reportedAt: string;
+  reportedBy: string | null;
+  noteCount: number;
+  pendingNoteCount: number;
+}
+
+export interface HistoryVisit {
+  visitId: number;
+  visitDate: string;
+  status: VisitStatus;
+  progress: Progress | null;
+  memo: string;
+  photo: Photo | null;
+  notes: Note[];
+}
+
+export interface PatientHistory {
+  patient: Patient;
+  visits: HistoryVisit[];
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -89,7 +138,10 @@ let clockOffsetMs = 0;
 export const serverNow = (): number => Date.now() + clockOffsetMs;
 export function syncClock(res: Response): void {
   const d = Date.parse(res.headers.get("Date") ?? "");
-  if (!Number.isNaN(d)) clockOffsetMs = d - Date.now();
+  if (Number.isNaN(d)) return;
+  // Date 헤더는 초 단위로 잘려 오므로 2초 미만 차이는 무시합니다 (안 그러면 남은 시간이 10:01처럼 보임).
+  const offset = d - Date.now();
+  clockOffsetMs = Math.abs(offset) < 2000 ? 0 : offset;
 }
 
 export async function api<T>(method: string, url: string, body?: unknown): Promise<T> {
@@ -105,7 +157,29 @@ export async function api<T>(method: string, url: string, body?: unknown): Promi
   }
   syncClock(res);
   if (!res.ok) throw await toApiError(res);
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
+}
+
+/** 파일 업로드 (진행률이 필요해서 XHR). 성공하면 JSON 본문을 돌려줍니다. */
+export function upload<T>(url: string, form: FormData, onProgress?: (percent: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(Math.min(99, Math.round((e.loaded / e.total) * 100)));
+    };
+    xhr.onload = async () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(100);
+        resolve(JSON.parse(xhr.responseText) as T);
+      } else {
+        reject(await toApiError(new Response(xhr.responseText, { status: xhr.status })));
+      }
+    };
+    xhr.onerror = () => reject(new ApiError("전송에 실패했습니다. 연결을 확인하고 다시 시도해 주세요.", 0, null));
+    xhr.send(form);
+  });
 }
 
 export const errorMessage = (e: unknown): string =>

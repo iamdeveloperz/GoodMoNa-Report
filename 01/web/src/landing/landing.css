@@ -1,0 +1,23 @@
+.landing { max-width: 1320px; margin: 0 auto; padding: var(--s8) var(--s5) var(--s7); }
+.landing-lead { font-size: var(--t-h2); font-weight: 700; letter-spacing: -0.03em; max-width: 18em; margin-bottom: var(--s7); }
+.roles { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--ink); }
+.role {
+  display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "no no go" "name name go" "who who go" "desc desc go";
+  row-gap: var(--s2); padding: var(--s6) var(--s5) var(--s6) 0; text-decoration: none; border-bottom: 1px solid var(--ink);
+}
+.role + .role { border-left: 1px solid var(--ink); padding-left: var(--s5); }
+.role-no { grid-area: no; font-size: var(--t-meta); font-weight: 700; color: var(--ink-3); }
+.role-name { grid-area: name; font-size: var(--t-h1); font-weight: 800; letter-spacing: -0.04em; line-height: 1.05; margin-top: var(--s4); }
+.role-who { grid-area: who; font-weight: 600; margin-top: var(--s3); }
+.role-desc { grid-area: desc; color: var(--ink-2); font-size: var(--t-small); }
+.role-go { grid-area: go; align-self: end; font-size: var(--t-h2); transition: transform .15s; }
+.role:hover .role-go { transform: translateX(6px); }
+.role:hover .role-name { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 8px; }
+
+@media (max-width: 760px) {
+  .landing { padding: var(--s6) var(--s4); }
+  .landing-lead { font-size: 22px; margin-bottom: var(--s6); }
+  .roles { grid-template-columns: 1fr; }
+  .role + .role { border-left: 0; padding-left: 0; }
+  .role-name { font-size: 36px; }
+}

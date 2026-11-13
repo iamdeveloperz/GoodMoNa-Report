@@ -9,8 +9,10 @@ node_modules/
 # web/ 빌드 결과 (npm run build로 다시 만듦)
 **/src/GoodMoNa.Server/wwwroot/
 
-# 로컬 데이터 (기본은 %LOCALAPPDATA%\GoodMoNa, 배포 시 C:\GoodMoNa\01\data)
+# 로컬 데이터 (기본은 %LOCALAPPDATA%\GoodMoNa, 배포 시 C:\GoodMoNa\01\data — 둘 다 리포 밖)
+# 주의: Windows git은 대소문자를 무시하므로 "data/"라고 쓰면 소스 폴더 Data/까지 빠집니다.
 *.db
 *.db-shm
 *.db-wal
-data/
+*.wav
+ggml-*.bin

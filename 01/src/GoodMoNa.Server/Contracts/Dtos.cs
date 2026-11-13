@@ -48,7 +48,48 @@ public sealed record CaptureInfoDto(
     DateTime ExpiresAt,
     CaptureState State);
 
-/// <summary>원장 앱(2번 과제)이 받는 새 보고 알림.</summary>
+public sealed record SegmentDto(int StartMs, int EndMs, string Text);
+
+public sealed record TranscriptDto(string Text, IReadOnlyList<SegmentDto> Segments, string Model, string Runtime, int ElapsedMs, DateTime CreatedAt);
+
+/// <summary>녹음 하나와, 변환이 끝났다면 그에 딸린 스크립트.</summary>
+public sealed record NoteDto(
+    int Id,
+    int VisitId,
+    int Seq,
+    NoteStatus Status,
+    string? Error,
+    int DurationMs,
+    NoteSource Source,
+    DateTime CreatedAt,
+    string AudioUrl,
+    TranscriptDto? Transcript);
+
+/// <summary>원장 앱 왼쪽 목록의 한 줄.</summary>
+public sealed record ReportListItemDto(
+    int VisitId,
+    int PatientId,
+    string PatientName,
+    DateOnly BirthDate,
+    Progress Progress,
+    DateTime ReportedAt,
+    string? ReportedBy,
+    int NoteCount,
+    int PendingNoteCount);
+
+/// <summary>환자 기록 재구성: 방문별 사진·경과·메모와 녹음 스크립트를 날짜순으로 묶은 것.</summary>
+public sealed record HistoryVisitDto(
+    int VisitId,
+    DateOnly VisitDate,
+    VisitStatus Status,
+    Progress? Progress,
+    string Memo,
+    PhotoDto? Photo,
+    IReadOnlyList<NoteDto> Notes);
+
+public sealed record PatientHistoryDto(PatientDto Patient, IReadOnlyList<HistoryVisitDto> Visits);
+
+/// <summary>원장 앱이 받는 새 보고 알림.</summary>
 public sealed record ReportSubmittedEvent(
     int VisitId,
     string PatientName,

@@ -1,5 +1,7 @@
-import * as signalR from "@microsoft/signalr";
+import "../shared/base.css";
+import "./report.css";
 import QRCode from "qrcode";
+import type { HubConnection } from "@microsoft/signalr";
 import {
   ApiError,
   PROGRESS_LABEL,
@@ -12,7 +14,8 @@ import {
   type Progress,
   type Visit,
 } from "../shared/api";
-import { byId, esc, fmtBirth, fmtHM, fmtMD, fmtRemain, toast } from "../shared/format";
+import { byId, esc, fmtBirth, fmtHM, fmtMD, fmtRemain, installImageFallback, toast } from "../shared/format";
+import { connectLive, isConnected } from "../shared/live";
 
 /* ---------- 상태 ---------- */
 
@@ -38,19 +41,17 @@ const draftOf = (visitId: number): Draft => {
   return d;
 };
 
-/* ---------- 실시간 연결 (SignalR) ---------- */
+/* ---------- 실시간 ---------- */
 
-const hub = new signalR.HubConnectionBuilder()
-  .withUrl("/hubs/visits")
-  .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-  .configureLogging(signalR.LogLevel.Warning)
-  .build();
-
-const conn = byId("conn");
-const setConn = (s: "connecting" | "connected" | "disconnected", text: string) => {
-  conn.dataset.state = s;
-  conn.textContent = text;
-};
+let joined: number | undefined;
+const hub: HubConnection = connectLive(byId("live"), async (h) => {
+  joined = undefined;
+  if (state.visit) {
+    await h.invoke("JoinVisit", state.visit.id);
+    joined = state.visit.id;
+    await reloadVisit(); // 끊긴 동안 도착한 사진을 놓치지 않도록
+  }
+});
 
 hub.on("PhotoArrived", (visitId: number, photo: Photo) => {
   if (state.visit?.id !== visitId) return;
@@ -62,43 +63,17 @@ hub.on("PhotoArrived", (visitId: number, photo: Photo) => {
 });
 
 hub.on("VisitReported", (visitId: number) => {
-  // 다른 PC에서 같은 환자를 보고한 경우 화면을 맞춥니다.
   if (state.visit?.id === visitId && state.visit.status !== "Reported") void reloadVisit();
 });
 
-hub.onreconnecting(() => setConn("connecting", "다시 연결 중"));
-hub.onreconnected(async () => {
-  setConn("connected", "실시간 연결됨");
-  // 끊긴 동안 도착한 사진을 놓치지 않도록 그룹에 다시 들어가고 새로 읽습니다.
-  if (state.visit) {
-    await hub.invoke("JoinVisit", state.visit.id);
-    await reloadVisit();
-  }
-});
-hub.onclose(() => {
-  setConn("disconnected", "연결 끊김");
-  window.setTimeout(startHub, 5000);
-});
-
-async function startHub(): Promise<void> {
-  try {
-    setConn("connecting", "연결 중");
-    await hub.start();
-    setConn("connected", "실시간 연결됨");
-    if (state.visit) await hub.invoke("JoinVisit", state.visit.id);
-  } catch {
-    setConn("disconnected", "연결 끊김");
-    window.setTimeout(startHub, 5000);
-  }
+async function follow(visitId: number): Promise<void> {
+  if (!isConnected(hub) || joined === visitId) return;
+  if (joined !== undefined) await hub.invoke("LeaveVisit", joined).catch(() => {});
+  await hub.invoke("JoinVisit", visitId).catch(() => {});
+  joined = visitId;
 }
 
-async function joinVisitGroup(next: number, prev: number | undefined): Promise<void> {
-  if (hub.state !== signalR.HubConnectionState.Connected) return; // 연결되면 startHub가 다시 넣어 줍니다.
-  if (prev !== undefined && prev !== next) await hub.invoke("LeaveVisit", prev).catch(() => {});
-  await hub.invoke("JoinVisit", next).catch(() => {});
-}
-
-/* ---------- 환자 검색 ---------- */
+/* ---------- 01 환자 검색 ---------- */
 
 const qInput = byId<HTMLInputElement>("q");
 const resultsEl = byId<HTMLUListElement>("results");
@@ -109,7 +84,7 @@ let searchTimer: number | undefined;
 qInput.addEventListener("input", () => {
   state.q = qInput.value;
   window.clearTimeout(searchTimer);
-  searchTimer = window.setTimeout(() => void search(), 200);
+  searchTimer = window.setTimeout(() => void search(), 180);
 });
 
 async function search(): Promise<void> {
@@ -135,22 +110,20 @@ function renderResults(): void {
   resultsEl.replaceChildren(
     ...state.results.map((p) => {
       const li = document.createElement("li");
-      const chip =
-        p.todayStatus === "Reported" ? '<span class="chip done">보고 완료</span>'
-        : p.todayStatus === "Draft" ? '<span class="chip draft">작성 중</span>'
-        : "";
+      const status = p.todayStatus === "Reported" ? '<span class="mark Reported">보고 완료</span>'
+        : p.todayStatus === "Draft" ? '<span class="mark Draft">작성 중</span>' : "";
       li.innerHTML = `<button type="button" aria-pressed="${state.visit?.patient.id === p.id}">
-          <span><span class="nm">${esc(p.name)}</span><span class="bd">${fmtBirth(p.birthDate)}</span></span>${chip}
+          <span><span class="nm">${esc(p.name)}</span><span class="bd">${fmtBirth(p.birthDate)}</span></span>${status}
           <span class="sub">${p.lastVisitDate ? `최근 방문 ${fmtMD(p.lastVisitDate)}` : "첫 방문"}</span></button>`;
       li.querySelector("button")!.addEventListener("click", () => void openVisit(p.id));
       return li;
     }),
   );
   noResult.hidden = !(q && state.results.length === 0);
-  noResult.textContent = `‘${q}’ 환자가 없습니다. 아래에서 신규 등록할 수 있습니다.`;
+  noResult.textContent = `‘${q}’ 환자가 없습니다. 신규 등록할 수 있습니다.`;
 }
 
-/* ---------- 신규 환자 등록 ---------- */
+/* ---------- 신규 환자 ---------- */
 
 const regForm = byId<HTMLFormElement>("regForm");
 const toggleReg = byId<HTMLButtonElement>("toggleReg");
@@ -194,20 +167,18 @@ function afterRegister(patientId: number, name: string, message: string): void {
   void openVisit(patientId).then(search);
 }
 
-/* ---------- 오늘 방문 ---------- */
+/* ---------- 02 오늘 방문 ---------- */
 
-const panel = byId("visitPanel");
+const panel = byId("visit");
 
 async function openVisit(patientId: number): Promise<void> {
   try {
-    const prev = state.visit?.id;
     const visit = await api<Visit>("POST", `/api/patients/${patientId}/visits/today`);
     state.visit = visit;
     state.justArrived = false;
     renderVisit();
-    await joinVisitGroup(visit.id, prev);
-    // 방문이 새로 생기면 목록의 "작성 중" 표시가 바뀌므로 다시 읽습니다.
-    void search();
+    await follow(visit.id);
+    void search(); // "작성 중" 표시 갱신
   } catch (e) {
     toast(errorMessage(e));
   }
@@ -223,80 +194,92 @@ async function reloadVisit(): Promise<void> {
   }
 }
 
-interface Slot {
-  label: string;
+interface Fig {
+  title: string;
   sub?: string;
   right?: string;
   photo: Photo | null;
-  emptyText: string;
+  empty: string;
   dashed?: boolean;
   arrive?: boolean;
 }
 
-function photoSlot(s: Slot): string {
-  return `<div class="slot">
-      <div class="slot-head"><span><b>${s.label}</b>${s.sub ? ` · ${s.sub}` : ""}</span><span>${s.right ?? ""}</span></div>
-      ${s.photo
-        ? `<div class="ph ${s.arrive ? "arrive" : ""}"><img src="${esc(s.photo.url)}" alt="${s.label} 사진" decoding="async"></div>`
-        : `<div class="ph ${s.dashed ? "empty" : ""}">${s.emptyText}</div>`}
-    </div>`;
-}
+const figure = (f: Fig): string => `<figure class="figure">
+    ${f.photo
+      ? `<div class="frame ${f.arrive ? "arrive" : ""}"><img src="${esc(f.photo.url)}" alt="${f.title} 사진" decoding="async"></div>`
+      : `<div class="frame ${f.dashed ? "empty" : ""}">${f.empty}</div>`}
+    <figcaption class="caption"><span><b>${f.title}</b>${f.sub ? ` ${f.sub}` : ""}</span><span>${f.right ?? ""}</span></figcaption>
+  </figure>`;
 
 function renderVisit(): void {
   const v = state.visit;
   if (!v) {
-    panel.innerHTML = '<p class="muted">왼쪽에서 환자를 검색해 선택하세요.</p>';
+    panel.innerHTML = '<p class="visit-empty">왼쪽에서 환자를 찾아 선택하세요.</p>';
     return;
   }
   const reported = v.status === "Reported";
   const d = draftOf(v.id);
 
   const before = v.previous
-    ? photoSlot({ label: "직전", sub: fmtMD(v.previous.visitDate), right: `${v.previous.daysAgo}일 전`, photo: v.previous.photo, emptyText: "" })
-    : photoSlot({ label: "직전", photo: null, emptyText: "첫 방문 — 비교할 사진이 없습니다" });
-  const today = photoSlot({
-    label: "오늘",
+    ? figure({ title: "직전", sub: fmtMD(v.previous.visitDate), right: `${v.previous.daysAgo}일 전`, photo: v.previous.photo, empty: "" })
+    : figure({ title: "직전", photo: null, empty: "첫 방문<br>비교할 사진 없음" });
+  const today = figure({
+    title: "오늘",
     sub: fmtMD(v.visitDate),
     right: v.photo ? `${fmtHM(v.photo.takenAt)} 촬영` : "",
     photo: v.photo,
-    emptyText: "QR로 촬영하세요",
+    empty: "아래 QR로 촬영",
     dashed: true,
     arrive: state.justArrived,
   });
   state.justArrived = false;
 
   const status = reported
-    ? `<span class="chip done">보고 완료 ${v.reportedAt ? fmtHM(v.reportedAt) : ""}</span>`
-    : '<span class="chip draft">작성 중</span>';
+    ? `<span class="mark Reported">보고 완료 ${v.reportedAt ? fmtHM(v.reportedAt) : ""}</span>`
+    : '<span class="mark Draft">작성 중</span>';
 
   const form = reported
-    ? `<div class="readonly-report">
-         <div class="row"><span class="label">경과</span><span class="chip ${v.progress}">${v.progress ? PROGRESS_LABEL[v.progress] : ""}</span><span class="label">· ${esc(v.reportedBy ?? "")} 보고</span></div>
-         <div>${v.memo ? esc(v.memo) : '<span class="muted">메모 없음</span>'}</div></div>`
-    : `<form class="form-grid" id="reportForm" novalidate>
-         <div class="row"><span class="label" id="progLabel" style="min-width:36px">경과</span>
+    ? `<div class="reported">
+         <span class="mark ${v.progress}">${v.progress ? PROGRESS_LABEL[v.progress] : ""}</span>
+         <span>${v.memo ? esc(v.memo) : '<span class="muted">메모 없음</span>'}</span>
+         <span class="meta">${esc(v.reportedBy ?? "")} 보고 · 원장 화면에 전달됨</span>
+       </div>`
+    : `<form class="report-form" id="reportForm" novalidate>
+         <div class="field">
+           <span class="label" id="progLabel">경과</span>
            <div class="seg" role="radiogroup" aria-labelledby="progLabel">
              ${(Object.keys(PROGRESS_LABEL) as Progress[])
-               .map((p) => `<label><input type="radio" name="progress" value="${p}" ${d.progress === p ? "checked" : ""}><span>${PROGRESS_LABEL[p]}</span></label>`)
+               .map((p) => `<label><input type="radio" name="progress" value="${p}" ${d.progress === p ? "checked" : ""}><span class="${p}">${PROGRESS_LABEL[p]}</span></label>`)
                .join("")}
-           </div></div>
-         <label class="label" for="memo">메모</label>
-         <textarea id="memo" maxlength="500" placeholder="예: 정수리 밀도 좋아짐, 두피 붉은기 감소">${esc(d.memo)}</textarea>
-         <div class="counter" id="memoCount">${d.memo.length} / 500</div>
-         <div class="row between">
+           </div>
+         </div>
+         <div class="field">
+           <label class="label" for="memo">메모</label>
+           <textarea id="memo" maxlength="500" placeholder="예: 정수리 밀도 좋아짐, 두피 붉은기 감소">${esc(d.memo)}</textarea>
+           <span class="counter" id="memoCount">${d.memo.length} / 500</span>
+         </div>
+         <div class="submit-row">
            <span class="reason" id="reason"></span>
-           <button class="btn primary" type="submit" id="submitReport">원장님께 보고</button>
-         </div></form>`;
+           <button class="btn primary big" type="submit" id="submitReport">원장님께 보고</button>
+         </div>
+       </form>`;
 
   panel.innerHTML = `
-    <div class="visit-head"><h2>${esc(v.patient.name)}<span>${fmtBirth(v.patient.birthDate)}</span></h2>
-      <div class="row"><span class="label">오늘 ${fmtMD(v.visitDate)}</span>${status}</div></div>
-    <div class="photos">${before}${today}</div>
-    ${reported ? "" : `<div class="row"><button class="btn" type="button" id="openQr">${v.photo ? "다시 촬영 (QR)" : "촬영 QR 띄우기"}</button>
-      <span class="muted small">폰으로 QR을 스캔하면 촬영 화면이 열립니다</span></div>`}
-    ${form}`;
+    <div class="visit-title">
+      <h1>${esc(v.patient.name)}<small>${fmtBirth(v.patient.birthDate)}</small></h1>
+      <div class="state"><span class="meta">오늘 ${fmtMD(v.visitDate)}</span>${status}</div>
+    </div>
+    <section class="block">
+      <div class="section-head"><span class="index">02</span><h2>사진</h2></div>
+      <div class="photos">${before}${today}</div>
+      ${reported ? "" : `<div class="capture-row"><button class="btn" type="button" id="openQr">${v.photo ? "다시 촬영 · QR" : "촬영 QR 띄우기"}</button>
+        <span class="meta">폰 카메라로 QR을 스캔하면 촬영 화면이 열립니다</span></div>`}
+    </section>
+    <section class="block">
+      <div class="section-head"><span class="index">03</span><h2>보고</h2></div>
+      ${form}
+    </section>`;
 
-  // 목록의 선택 표시 갱신
   resultsEl.querySelectorAll("button[aria-pressed]").forEach((b, i) =>
     b.setAttribute("aria-pressed", String(state.results[i]?.id === v.patient.id)),
   );
@@ -366,7 +349,7 @@ async function openQr(): Promise<void> {
   try {
     const t = await api<CaptureToken>("POST", `/api/visits/${v.id}/capture-tokens`);
     state.token = t;
-    await QRCode.toCanvas(qrCanvas, t.captureUrl, { width: 240, margin: 2, errorCorrectionLevel: "M" });
+    await QRCode.toCanvas(qrCanvas, t.captureUrl, { width: 280, margin: 2, errorCorrectionLevel: "M", color: { dark: "#0e0e0e", light: "#ffffff" } });
     qrCanvas.classList.remove("expired");
     byId("qrWho").textContent = `${v.patient.name} · ${fmtBirth(v.patient.birthDate)} · 오늘`;
     byId("qrUrl").textContent = t.captureUrl;
@@ -398,11 +381,12 @@ function closeQr(): void {
 
 byId("qrClose").addEventListener("click", closeQr);
 qrRenew.addEventListener("click", () => void openQr());
+qrScrim.addEventListener("click", (e) => {
+  if (e.target === qrScrim) closeQr();
+});
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !qrScrim.hidden) closeQr();
 });
 
-/* ---------- 시작 ---------- */
-
+installImageFallback();
 renderVisit();
-void startHub();

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafaf7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230e0e0e%27/%3E%3Crect x=%274%27 y=%2710%27 width=%278%27 height=%272%27 fill=%27%23d7261e%27/%3E%3C/svg%3E">
+  <title>보고 — GoodMoNa</title>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="/">GoodMoNa<span>경과 보고</span></a>
+      <nav class="nav" aria-label="화면">
+        <a href="/report" aria-current="page">보고</a>
+        <a href="/director">결과 확인</a>
+      </nav>
+      <span class="live" id="live" data-state="connecting">연결 중</span>
+    </div>
+  </header>
+
+  <main class="report">
+    <aside class="patients">
+      <div class="section-head"><span class="index">01</span><h2>환자</h2></div>
+      <div class="field">
+        <label class="label" for="q">이름 검색</label>
+        <input type="search" id="q" autocomplete="off" placeholder="예: 김민" autofocus>
+      </div>
+      <ul class="results" id="results" aria-live="polite"></ul>
+      <p class="meta" id="noResult" hidden></p>
+
+      <button class="textbtn" id="toggleReg" type="button" aria-expanded="false" aria-controls="regForm">신규 환자 등록</button>
+      <form class="reg" id="regForm" hidden novalidate>
+        <div class="field">
+          <label class="label" for="regName">이름</label>
+          <input type="text" id="regName" maxlength="30" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="label" for="regBirth">생년월일 · YYYY-MM-DD 또는 YYMMDD</label>
+          <input type="text" id="regBirth" inputmode="numeric" placeholder="1990-03-12" autocomplete="off">
+        </div>
+        <p class="err" id="regErr" role="alert" hidden></p>
+        <button class="btn primary" type="submit">등록하고 열기</button>
+      </form>
+    </aside>
+
+    <section class="visit" id="visit" aria-live="polite"></section>
+  </main>
+
+  <div class="scrim" id="qrScrim" hidden>
+    <div class="sheet qr" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+      <div class="row-between">
+        <h3 id="qrTitle">폰 카메라로 스캔</h3>
+        <button class="textbtn" id="qrClose" type="button">닫기</button>
+      </div>
+      <p class="small" id="qrWho"></p>
+      <canvas id="qrCanvas" aria-label="촬영용 QR 코드"></canvas>
+      <div class="qr-timer"><span class="label">남은 시간</span><span class="clock" id="qrTimer">10:00</span></div>
+      <p class="meta url" id="qrUrl"></p>
+      <button class="btn primary" id="qrRenew" type="button" hidden>새 QR 받기</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/report/main.ts"></script>
+</body>
+</html>

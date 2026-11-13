@@ -3,6 +3,7 @@ using GoodMoNa.Server.Data;
 using GoodMoNa.Server.Endpoints;
 using GoodMoNa.Server.Hubs;
 using GoodMoNa.Server.Infrastructure;
+using GoodMoNa.Server.Transcription;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -16,8 +17,13 @@ builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptio
 builder.Services.AddSingleton(sp => new DataPaths(sp.GetRequiredService<IOptions<AppOptions>>().Value));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<ClinicClock>();
-builder.Services.AddSingleton<PhotoStorage>();
+builder.Services.AddSingleton<MediaStorage>();
 builder.Services.AddDbContext<AppDbContext>((sp, o) => o.UseSqlite(sp.GetRequiredService<DataPaths>().ConnectionString));
+
+// 원장 녹음 → Whisper 자동 변환 (한 번에 하나씩, 백그라운드)
+builder.Services.AddSingleton<ISpeechToText, WhisperSpeechToText>();
+builder.Services.AddSingleton<TranscriptionQueue>();
+builder.Services.AddHostedService<TranscriptionWorker>();
 
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddSignalR().AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -49,10 +55,14 @@ app.MapPatientEndpoints();
 app.MapVisitEndpoints();
 app.MapCaptureEndpoints();
 app.MapPhotoEndpoints();
+app.MapNoteEndpoints();
+app.MapDirectorEndpoints();
 app.MapHub<VisitHub>(VisitHub.Path);
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
-// 폰이 QR로 여는 촬영 페이지 (/capture/{token})
+// 화면: / (역할 선택) · /report (간호사 보고) · /director (원장 결과 확인) · /capture/{token} (폰 촬영)
+app.MapFallbackToFile("/report", "report.html");
+app.MapFallbackToFile("/director", "director.html");
 app.MapFallbackToFile("/capture/{**rest}", "capture.html");
 
 app.Run();

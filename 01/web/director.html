@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafaf7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230e0e0e%27/%3E%3Crect x=%274%27 y=%2710%27 width=%278%27 height=%272%27 fill=%27%23d7261e%27/%3E%3C/svg%3E">
+  <title>결과 확인 — GoodMoNa</title>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="/">GoodMoNa<span>경과 보고</span></a>
+      <nav class="nav" aria-label="화면">
+        <a href="/report">보고</a>
+        <a href="/director" aria-current="page">결과 확인</a>
+      </nav>
+      <span class="live" id="live" data-state="connecting">연결 중</span>
+    </div>
+  </header>
+
+  <div class="unlock" id="unlock">
+    <p><b>업무 시작</b>을 누르면 새 보고가 올 때 알림음이 납니다. iPad는 한 번 눌러야 소리를 낼 수 있습니다.</p>
+    <button class="btn primary" id="startWork" type="button">업무 시작</button>
+  </div>
+
+  <main class="director" id="director">
+    <aside class="inbox">
+      <div class="section-head"><span class="index">01</span><h2>받은 보고</h2><span class="grow"></span><span class="meta" id="count"></span></div>
+      <div class="daybar">
+        <button class="daystep" id="prevDay" type="button" aria-label="이전 날">←</button>
+        <span class="day" id="dayLabel"></span>
+        <button class="daystep" id="nextDay" type="button" aria-label="다음 날">→</button>
+        <button class="textbtn" id="todayBtn" type="button">오늘</button>
+      </div>
+      <ul class="inbox-list" id="inbox" aria-live="polite"></ul>
+    </aside>
+    <section class="detail" id="detail"></section>
+  </main>
+
+  <div class="scrim" id="recChooser" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="recTitle">
+      <div class="row-between"><h3 id="recTitle">소견 녹음</h3><button class="textbtn" id="recChooserClose" type="button">닫기</button></div>
+      <button class="btn primary big block" id="recInApp" type="button">화면에서 바로 녹음</button>
+      <label class="btn big block filebtn">기기 녹음 앱으로 녹음<input type="file" accept="audio/*" capture id="recNative"></label>
+      <label class="btn big block filebtn">저장된 녹음 파일 선택<input type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.webm,.ogg" id="recFile"></label>
+      <p class="meta">녹음이 올라가면 이 PC의 Whisper가 자동으로 텍스트로 바꿉니다. 최대 10분.</p>
+    </div>
+  </div>
+
+  <div class="recorder" id="recorder" hidden role="dialog" aria-modal="true" aria-label="녹음 중">
+    <div class="rec-top"><span class="rec-on">녹음 중</span><span id="recWho"></span></div>
+    <div class="rec-clock" id="recClock">0:00</div>
+    <div class="rec-meter" aria-hidden="true"><i id="recLevel"></i></div>
+    <div class="rec-actions">
+      <button class="btn big rec-stop" id="recStop" type="button">정지하고 올리기</button>
+      <button class="textbtn" id="recCancel" type="button">녹음 취소</button>
+    </div>
+    <p class="rec-note">최대 10분 · 10분이 되면 자동으로 멈추고 올립니다</p>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/director/main.ts"></script>
+</body>
+</html>

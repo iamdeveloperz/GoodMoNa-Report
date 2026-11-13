@@ -17,6 +17,7 @@ param(
     [string]$TunnelName = "goodmona",
     [string]$InstallRoot = "C:\GoodMoNa\01",
     [int]$Port = 5001,
+    [string]$ModelPath = "C:\GoodMoNa\models\ggml-large-v3-turbo.bin",
     [switch]$SkipTunnel
 )
 
@@ -27,7 +28,7 @@ $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host "관리자 권한이 필요합니다. UAC 창에서 '예'를 눌러 주세요." -ForegroundColor Yellow
     $argList = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-NoExit", "-File", "`"$PSCommandPath`"",
-        "-Hostname", $Hostname, "-TunnelName", $TunnelName, "-InstallRoot", "`"$InstallRoot`"", "-Port", $Port)
+        "-Hostname", $Hostname, "-TunnelName", $TunnelName, "-InstallRoot", "`"$InstallRoot`"", "-Port", $Port, "-ModelPath", "`"$ModelPath`"")
     if ($SkipTunnel) { $argList += "-SkipTunnel" }
     Start-Process powershell.exe -Verb RunAs -ArgumentList $argList
     return
@@ -65,6 +66,17 @@ if (-not $SkipTunnel) {
 }
 Write-Host "설치 위치: $InstallRoot / 외부 주소: https://$Hostname"
 
+# ---------- Whisper 모델 ----------
+Step "Whisper 모델 확인: $ModelPath"
+if (-not (Test-Path $ModelPath)) {
+    $name = Split-Path $ModelPath -Leaf
+    Write-Host "모델이 없어 내려받습니다 (약 1.6GB): huggingface.co/ggerganov/whisper.cpp/$name"
+    New-Item -ItemType Directory -Force (Split-Path $ModelPath -Parent) | Out-Null
+    Invoke-Native "모델 다운로드" { curl.exe -L --fail --retry 3 -o "$ModelPath.part" "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/$name" }
+    Move-Item -Force "$ModelPath.part" $ModelPath
+}
+Write-Host ("모델 크기: {0:N0} MB" -f ((Get-Item $ModelPath).Length / 1MB))
+
 # ---------- 빌드 ----------
 Step "화면(web) 빌드"
 Push-Location (Join-Path $root "web")
@@ -87,7 +99,7 @@ Invoke-Native "dotnet publish" { dotnet publish (Join-Path $root "src\GoodMoNa.S
 # 운영 설정: 데이터 폴더·외부 주소. (예시 데이터는 실제 환자 데이터를 넣기 전까지만 켜 두세요)
 $settings = [ordered]@{
     Kestrel = @{ Endpoints = @{ Report = @{ Url = "http://localhost:$Port" } } }
-    App     = [ordered]@{ DataRoot = $dataDir; PublicBaseUrl = "https://$Hostname"; SeedDemoData = $true }
+    App     = [ordered]@{ DataRoot = $dataDir; PublicBaseUrl = "https://$Hostname"; SeedDemoData = $true; Whisper = @{ ModelPath = $ModelPath } }
 }
 $settings | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $appDir "appsettings.Production.json") -Encoding UTF8
 

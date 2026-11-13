@@ -8,7 +8,7 @@ public static class PhotoEndpoints
 {
     public static void MapPhotoEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/photos/{photoId:int}", async (int photoId, AppDbContext db, PhotoStorage storage, HttpResponse response, CancellationToken ct) =>
+        app.MapGet("/api/photos/{photoId:int}", async (int photoId, AppDbContext db, MediaStorage storage, HttpResponse response, CancellationToken ct) =>
         {
             var photo = await db.Photos.AsNoTracking().FirstOrDefaultAsync(p => p.Id == photoId, ct);
             if (photo is null) return Problems.NotFound("사진을 찾을 수 없습니다.");

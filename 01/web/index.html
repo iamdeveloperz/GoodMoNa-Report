@@ -4,55 +4,35 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>굿모나 보고</title>
-  <link rel="stylesheet" href="/src/shared/base.css">
-  <link rel="stylesheet" href="/src/report/report.css">
+  <meta name="theme-color" content="#fafaf7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230e0e0e%27/%3E%3Crect x=%274%27 y=%2710%27 width=%278%27 height=%272%27 fill=%27%23d7261e%27/%3E%3C/svg%3E">
+  <title>GoodMoNa</title>
 </head>
 <body>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="brand"><b>GoodMoNa 보고</b><span>간호사 PC·태블릿</span></div>
-      <span class="conn" id="conn" data-state="connecting">연결 중</span>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="/">GoodMoNa<span>경과 보고</span></a>
     </div>
   </header>
-
-  <main class="report-layout">
-    <aside class="panel search">
-      <label class="label" for="q">환자 검색</label>
-      <input type="search" id="q" autocomplete="off" placeholder="이름을 입력하세요" autofocus>
-      <ul class="results" id="results" aria-live="polite"></ul>
-      <p class="empty-note" id="noResult" hidden></p>
-      <button class="linkbtn" id="toggleReg" type="button" aria-expanded="false" aria-controls="regForm">+ 신규 환자 등록</button>
-      <form class="reg" id="regForm" hidden novalidate>
-        <label class="label" for="regName">이름</label>
-        <input type="text" id="regName" maxlength="30" autocomplete="off">
-        <label class="label" for="regBirth">생년월일 (YYYY-MM-DD 또는 YYMMDD)</label>
-        <input type="text" id="regBirth" inputmode="numeric" placeholder="1990-03-12" autocomplete="off">
-        <p class="err" id="regErr" role="alert" hidden></p>
-        <button class="btn primary" type="submit">등록하고 선택</button>
-      </form>
-    </aside>
-
-    <section class="panel visit" id="visitPanel" aria-live="polite">
-      <p class="muted">왼쪽에서 환자를 검색해 선택하세요.</p>
-    </section>
+  <main class="landing">
+    <p class="landing-lead">폰으로 찍고 보고하면, 원장 화면에 바로 뜹니다.</p>
+    <nav class="roles" aria-label="화면 선택">
+      <a class="role" href="/report">
+        <span class="role-no">01</span>
+        <span class="role-name">보고</span>
+        <span class="role-who">간호사 · PC · 태블릿</span>
+        <span class="role-desc">환자 검색 → 사진 촬영(QR) → 경과 보고</span>
+        <span class="role-go" aria-hidden="true">→</span>
+      </a>
+      <a class="role" href="/director">
+        <span class="role-no">02</span>
+        <span class="role-name">결과 확인</span>
+        <span class="role-who">원장 · iPad</span>
+        <span class="role-desc">보고 알림 → 전후 사진 → 소견 녹음 · 스크립트</span>
+        <span class="role-go" aria-hidden="true">→</span>
+      </a>
+    </nav>
   </main>
-
-  <div class="scrim" id="qrScrim" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
-      <h3 id="qrTitle">폰 카메라로 스캔하세요</h3>
-      <p class="muted" id="qrWho"></p>
-      <canvas id="qrCanvas" aria-label="촬영용 QR 코드"></canvas>
-      <p>남은 시간 <span class="timer" id="qrTimer">10:00</span></p>
-      <p class="muted small" id="qrUrl"></p>
-      <div class="row center">
-        <button class="btn" id="qrRenew" type="button" hidden>새 QR 받기</button>
-        <button class="btn" id="qrClose" type="button">닫기</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <script type="module" src="/src/report/main.ts"></script>
+  <script type="module" src="/src/landing/main.ts"></script>
 </body>
 </html>

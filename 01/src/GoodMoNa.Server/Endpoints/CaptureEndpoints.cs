@@ -33,7 +33,7 @@ public static class CaptureEndpoints
     }
 
     private static async Task<IResult> UploadPhoto(
-        string token, IFormFile? photo, AppDbContext db, ClinicClock clock, PhotoStorage storage,
+        string token, IFormFile? photo, AppDbContext db, ClinicClock clock, MediaStorage storage,
         IOptions<AppOptions> options, IHubContext<VisitHub> hub, CancellationToken ct)
     {
         var found = await FindAsync(token, db, ct);
@@ -52,11 +52,11 @@ public static class CaptureEndpoints
 
         using var buffer = new MemoryStream((int)photo.Length);
         await photo.CopyToAsync(buffer, ct);
-        if (!PhotoStorage.LooksLikeJpeg(buffer.GetBuffer().AsSpan(0, (int)buffer.Length)))
+        if (!MediaStorage.LooksLikeJpeg(buffer.GetBuffer().AsSpan(0, (int)buffer.Length)))
             return Problems.Unsupported("JPEG 사진만 올릴 수 있습니다.");
 
         var now = clock.UtcNow;
-        var path = await storage.SaveAsync(buffer.GetBuffer().AsMemory(0, (int)buffer.Length), ".jpg", now, ct);
+        var path = await storage.SaveAsync(buffer.GetBuffer().AsMemory(0, (int)buffer.Length), "photos", ".jpg", now, ct);
         var entity = new Photo { VisitId = visit.Id, StoragePath = path, ContentType = "image/jpeg", SizeBytes = buffer.Length, UploadedAt = now };
         db.Photos.Add(entity);
         await db.SaveChangesAsync(ct);

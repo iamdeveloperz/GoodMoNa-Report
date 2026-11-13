@@ -16,6 +16,8 @@ public sealed class VisitHub : Hub
         public const string PhotoArrived = "PhotoArrived";
         public const string VisitReported = "VisitReported";
         public const string ReportSubmitted = "ReportSubmitted";
+        public const string NoteUpdated = "NoteUpdated";
+        public const string NoteDeleted = "NoteDeleted";
     }
 
     public static string VisitGroup(int visitId) => $"visit:{visitId}";
