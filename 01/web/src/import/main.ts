@@ -60,6 +60,11 @@ async function loadFolder(): Promise<void> {
     byId("folderInfo").textContent = `가져오기 폴더에 ${num(folder.count)}장 · ${fmtBytes(folder.totalBytes)}`;
     byId("importRoot").textContent = folder.root;
   } catch (e) {
+    if (e instanceof ApiError && e.status === 403) {
+      // 외부(Cloudflare)로 열었을 때: 화면 전체를 안내로 바꿈
+      document.querySelector(".import")!.innerHTML = `<p class="import-lead">기록 가져오기는 서버 PC에서만 쓸 수 있습니다.</p><p class="err">${esc(e.message)}</p>`;
+      return;
+    }
     byId("folderInfo").textContent = errorMessage(e);
   }
 }

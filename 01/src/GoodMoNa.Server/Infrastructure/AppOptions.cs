@@ -17,6 +17,12 @@ public sealed class AppOptions
     /// <summary>DB가 비어 있을 때 예시 환자·과거 방문 사진을 넣습니다. 실제 환자 데이터를 쓰기 전엔 끄세요.</summary>
     public bool SeedDemoData { get; set; }
 
+    /// <summary>
+    /// 기록 가져오기(/api/import)를 Cloudflare를 거친 외부 요청에도 열지. 기본은 꺼짐: 서버 PC(localhost)에서만 씁니다.
+    /// Cloudflare Access(로그인)를 /import·/api/import에 건 뒤에만 켜세요.
+    /// </summary>
+    public bool AllowRemoteImport { get; set; }
+
     public string TimeZone { get; set; } = "Asia/Seoul";
 
     /// <summary>원장 녹음 한 개의 최대 길이. 화면 녹음기는 10분에서 자동으로 멈춥니다.</summary>

@@ -3,6 +3,7 @@ using GoodMoNa.Server.Contracts;
 using GoodMoNa.Server.Import;
 using GoodMoNa.Server.Infrastructure;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Options;
 
 namespace GoodMoNa.Server.Endpoints;
 
@@ -18,7 +19,16 @@ public static class ImportEndpoints
 
     public static void MapImportEndpoints(this IEndpointRouteBuilder app)
     {
-        var g = app.MapGroup("/api/import");
+        // 파일을 올리고 환자 기록을 대량으로 넣는 기능이라, 기본은 서버 PC에서만 씁니다.
+        // Cloudflare를 거친 요청에는 항상 Cf-Connecting-IP 헤더가 붙고(외부에서 지울 수 없음), 서버는 localhost에만 열려 있습니다.
+        var g = app.MapGroup("/api/import").AddEndpointFilter(async (ctx, next) =>
+        {
+            var http = ctx.HttpContext;
+            var allowRemote = http.RequestServices.GetRequiredService<IOptions<AppOptions>>().Value.AllowRemoteImport;
+            if (!allowRemote && http.Request.Headers.ContainsKey("Cf-Connecting-IP"))
+                return Problems.Forbidden("기록 가져오기는 서버 PC에서 http://localhost:5001/import 로 열어 주세요. (외부에서 쓰려면 Cloudflare Access를 건 뒤 App:AllowRemoteImport를 켭니다)");
+            return await next(ctx);
+        });
         g.MapGet("/template.csv", () =>
             Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(LegacyImporter.TemplateCsv)).ToArray(),
                 "text/csv; charset=utf-8", "goodmona-import-template.csv"));

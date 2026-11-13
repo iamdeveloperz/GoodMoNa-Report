@@ -6,6 +6,9 @@ internal static class Problems
     public static IResult Validation(string field, string message) =>
         Results.ValidationProblem(new Dictionary<string, string[]> { [field] = [message] }, detail: message, title: "입력값 오류");
 
+    public static IResult Forbidden(string message) =>
+        Results.Problem(detail: message, statusCode: StatusCodes.Status403Forbidden, title: "권한 없음");
+
     public static IResult NotFound(string message) =>
         Results.Problem(detail: message, statusCode: StatusCodes.Status404NotFound, title: "없음");
 

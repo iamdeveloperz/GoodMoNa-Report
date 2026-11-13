@@ -216,6 +216,21 @@ public sealed class ImportTests : IDisposable
     }
 
     [Fact]
+    public async Task Cloudflare를_거친_외부_요청은_기본적으로_가져오기를_쓸_수_없다()
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/import/files");
+        req.Headers.Add("Cf-Connecting-IP", "203.0.113.7");
+        Assert.Equal(HttpStatusCode.Forbidden, (await _http.SendAsync(req)).StatusCode);
+
+        using var put = new HttpRequestMessage(HttpMethod.Put, "/api/import/files/x.jpg") { Content = new ByteArrayContent(Jpeg(1)) };
+        put.Headers.Add("Cf-Connecting-IP", "203.0.113.7");
+        Assert.Equal(HttpStatusCode.Forbidden, (await _http.SendAsync(put)).StatusCode);
+
+        // 서버 PC에서 직접(localhost) 여는 경우는 그대로 됩니다.
+        Assert.Equal(HttpStatusCode.OK, (await _http.GetAsync("/api/import/files")).StatusCode);
+    }
+
+    [Fact]
     public void CSV는_따옴표_안의_쉼표_줄바꿈_따옴표를_그대로_읽는다()
     {
         var rows = CsvTable.Parse("a,b,c\r\n\"x, y\",\"줄\n바꿈\",\"say \"\"hi\"\"\"\r\n,,\n");
