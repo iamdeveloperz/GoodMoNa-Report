@@ -86,11 +86,10 @@ try {
 }
 finally { Pop-Location }
 
-Step "기존 서비스 정지"
-foreach ($name in $tunnelService, $appService) {
-    $svc = Get-Service $name -ErrorAction SilentlyContinue
-    if ($svc -and $svc.Status -ne "Stopped") { Stop-Service $name -Force; $svc.WaitForStatus("Stopped", "00:00:30") }
-}
+# 터널은 멈추지 않습니다: 뒤 단계에서 실패해도 외부 접속이 끊긴 채로 남지 않게 (서버만 잠깐 502).
+Step "기존 서버 서비스 정지"
+$svc = Get-Service $appService -ErrorAction SilentlyContinue
+if ($svc -and $svc.Status -ne "Stopped") { Stop-Service $appService -Force; $svc.WaitForStatus("Stopped", "00:00:30") }
 
 Step "서버 publish → $appDir"
 New-Item -ItemType Directory -Force $appDir, $dataDir, $tunnelDir | Out-Null
@@ -128,11 +127,13 @@ if ($SkipTunnel) { Write-Host "`n터널은 건너뛰었습니다."; exit 0 }
 # ---------- Cloudflare Tunnel ----------
 Step "터널 준비: $TunnelName"
 $tunnels = & $cloudflared tunnel list --name $TunnelName --output json | ConvertFrom-Json
-$tunnel = $tunnels | Where-Object { $_.name -eq $TunnelName -and -not $_.deleted_at } | Select-Object -First 1
+# 지워지지 않은 터널은 deleted_at이 비어 있거나 "0001-01-01..."(Go의 zero time)로 옵니다.
+$tunnel = $tunnels | Where-Object { $_.name -eq $TunnelName -and (-not $_.deleted_at -or "$($_.deleted_at)".StartsWith("0001-")) } | Select-Object -First 1
 if (-not $tunnel) {
     Invoke-Native "tunnel create" { & $cloudflared tunnel create $TunnelName }
     $tunnel = (& $cloudflared tunnel list --name $TunnelName --output json | ConvertFrom-Json) | Select-Object -First 1
 }
+if (-not $tunnel.id) { Fail "터널 '$TunnelName'을(를) 찾지 못했습니다." }
 $id = $tunnel.id
 $credSrc = Join-Path $env:USERPROFILE ".cloudflared\$id.json"
 $credDst = Join-Path $tunnelDir "$id.json"
@@ -169,7 +170,7 @@ else {
     Invoke-Native "sc config" { sc.exe config $tunnelService binPath= $bin start= auto }
 }
 Invoke-Native "sc failure" { sc.exe failure $tunnelService reset= 86400 actions= restart/5000/restart/5000/restart/30000 }
-Start-Service $tunnelService
+Restart-Service $tunnelService -Force   # 바뀐 config.yml 반영 (멈춰 있었으면 시작)
 
 # ---------- 외부 확인 ----------
 Step "외부 접속 확인: https://$Hostname/healthz (DNS 반영에 1~2분 걸릴 수 있음)"
