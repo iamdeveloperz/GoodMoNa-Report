@@ -10,4 +10,8 @@ public sealed class ClinicClock(TimeProvider time, IOptions<AppOptions> options)
     public DateTime UtcNow => time.GetUtcNow().UtcDateTime;
 
     public DateOnly Today => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(UtcNow, _zone));
+
+    /// <summary>병원 시간대의 날짜·시각을 UTC로 (이전 기록의 방문 시각을 정할 때)</summary>
+    public DateTime ToUtc(DateOnly date, TimeOnly time) =>
+        TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(time, DateTimeKind.Unspecified), _zone);
 }

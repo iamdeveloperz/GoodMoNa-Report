@@ -108,6 +108,9 @@ public sealed class Photo
     public required string ContentType { get; set; }
     public long SizeBytes { get; set; }
     public DateTime UploadedAt { get; set; }
+
+    /// <summary>파일 SHA-256 (hex). 이전 기록 가져오기를 다시 돌려도 같은 사진이 두 번 들어가지 않게 합니다.</summary>
+    public string? ContentHash { get; set; }
 }
 
 /// <summary>QR로 폰에 넘기는 일회용 촬영 권한. 원문 토큰은 저장하지 않고 SHA-256 해시만 둡니다.</summary>

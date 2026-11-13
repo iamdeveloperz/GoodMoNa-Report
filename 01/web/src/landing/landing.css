@@ -14,6 +14,9 @@
 .role:hover .role-go { transform: translateX(6px); }
 .role:hover .role-name { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 8px; }
 
+.landing-more { margin-top: var(--s5); font-size: var(--t-small); font-weight: 600; }
+.landing-more a { text-underline-offset: 4px; }
+
 @media (max-width: 760px) {
   .landing { padding: var(--s6) var(--s4); }
   .landing-lead { font-size: 22px; margin-bottom: var(--s6); }

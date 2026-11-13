@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using GoodMoNa.Server.Data;
 using GoodMoNa.Server.Endpoints;
 using GoodMoNa.Server.Hubs;
+using GoodMoNa.Server.Import;
 using GoodMoNa.Server.Infrastructure;
 using GoodMoNa.Server.Transcription;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -24,6 +25,10 @@ builder.Services.AddDbContext<AppDbContext>((sp, o) => o.UseSqlite(sp.GetRequire
 builder.Services.AddSingleton<ISpeechToText, WhisperSpeechToText>();
 builder.Services.AddSingleton<TranscriptionQueue>();
 builder.Services.AddHostedService<TranscriptionWorker>();
+
+// 이전 전산 기록(CSV + 사진) 가져오기
+builder.Services.AddScoped<LegacyImporter>();
+builder.Services.AddSingleton<ImportJobs>();
 
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddSignalR().AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -57,12 +62,14 @@ app.MapCaptureEndpoints();
 app.MapPhotoEndpoints();
 app.MapNoteEndpoints();
 app.MapDirectorEndpoints();
+app.MapImportEndpoints();
 app.MapHub<VisitHub>(VisitHub.Path);
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
-// 화면: / (역할 선택) · /report (간호사 보고) · /director (원장 결과 확인) · /capture/{token} (폰 촬영)
+// 화면: / (역할 선택) · /report (간호사 보고) · /director (원장 결과 확인) · /import (이전 기록 가져오기) · /capture/{token} (폰 촬영)
 app.MapFallbackToFile("/report", "report.html");
 app.MapFallbackToFile("/director", "director.html");
+app.MapFallbackToFile("/import", "import.html");
 app.MapFallbackToFile("/capture/{**rest}", "capture.html");
 
 app.Run();

@@ -1,0 +1,38 @@
+.import { max-width: 980px; margin: 0 auto; padding: var(--s7) var(--s5) var(--s8); display: flex; flex-direction: column; gap: var(--s7); }
+.import-lead { font-size: var(--t-h3); font-weight: 700; letter-spacing: -0.02em; max-width: 34em; }
+.step { display: flex; flex-direction: column; gap: var(--s4); }
+.actions { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+.actions .grow { flex: 1; }
+code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .92em; background: var(--tint); padding: 1px 5px; word-break: break-all; }
+
+.cols, .issues-table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+.cols th { text-align: left; font-size: var(--t-meta); font-weight: 600; color: var(--ink-3); padding: var(--s2) var(--s3) var(--s2) 0; border-bottom: 1px solid var(--ink); }
+.cols td { padding: var(--s2) var(--s3) var(--s2) 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.cols td:first-child { font-weight: 700; white-space: nowrap; width: 6em; }
+.cols td:nth-child(2) { width: 3em; color: var(--ink); }
+
+.upload { display: flex; flex-direction: column; gap: var(--s2); border: 1px solid var(--ink); padding: var(--s4); background: var(--sheet); }
+.issues { margin: 0; padding: var(--s3) var(--s4); list-style: none; border-left: 3px solid var(--accent); font-size: var(--t-small); max-height: 240px; overflow: auto; }
+
+.stats { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); }
+.done .stats { grid-template-columns: repeat(4, 1fr); }
+.stat { display: flex; flex-direction: column; gap: 2px; padding: var(--s4) var(--s3) var(--s4) 0; }
+.stat + .stat { border-left: 1px solid var(--rule); padding-left: var(--s4); }
+.stat b { font-size: var(--t-h2); letter-spacing: -0.03em; line-height: 1.1; }
+.stat small { font-size: var(--t-meta); color: var(--ink-3); min-height: 1.5em; }
+
+.issue-block { margin-top: var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
+.issue-block h3 { font-size: var(--t-body); }
+.issue-block.bad h3 { color: var(--accent); }
+.issues-table { max-height: 360px; display: block; overflow: auto; }
+.issues-table td { padding: 6px var(--s3) 6px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.issues-table td:first-child { font-weight: 700; white-space: nowrap; width: 5em; }
+.err { color: var(--accent); font-weight: 600; font-size: var(--t-small); }
+.done { display: flex; flex-direction: column; gap: var(--s4); }
+.done h3 { font-size: var(--t-h3); }
+
+@media (max-width: 760px) {
+  .import { padding: var(--s6) var(--s4); gap: var(--s6); }
+  .stats, .done .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat:nth-child(odd) { border-left: 0; padding-left: 0; }
+}

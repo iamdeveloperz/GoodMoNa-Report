@@ -80,7 +80,7 @@ export interface ReportListItem {
   patientId: number;
   patientName: string;
   birthDate: string;
-  progress: Progress;
+  progress: Progress | null; // 이전 기록을 가져온 방문은 경과가 비어 있을 수 있음
   reportedAt: string;
   reportedBy: string | null;
   noteCount: number;

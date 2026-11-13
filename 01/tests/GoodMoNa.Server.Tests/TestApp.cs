@@ -66,7 +66,7 @@ public sealed class TestApp : WebApplicationFactory<Program>
         // web 빌드 결과와 상관없이 화면 라우팅을 검사할 수 있도록, 페이지마다 이름만 적힌 가짜 HTML을 둡니다.
         var webRoot = Path.Combine(DataRoot, "www");
         Directory.CreateDirectory(webRoot);
-        foreach (var page in new[] { "index", "report", "director", "capture" })
+        foreach (var page in new[] { "index", "report", "director", "import", "capture" })
             File.WriteAllText(Path.Combine(webRoot, $"{page}.html"), $"<!doctype html><title>{page}</title>");
         builder.UseWebRoot(webRoot);
 

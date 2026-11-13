@@ -15,6 +15,7 @@ import {
 import { MAX_RECORD_MS, Chime, canRecordInApp, startRecorder, toWav16k, type Recorder } from "../shared/audio";
 import { addDaysIso, byId, esc, fmtBirth, fmtBirthShort, fmtDateLong, fmtDuration, fmtHM, fmtMD, installImageFallback, todayIso, toast } from "../shared/format";
 import { connectLive } from "../shared/live";
+import { openCompare, openZoom, type ViewPhoto } from "../shared/viewer";
 
 /* ---------- 상태 ---------- */
 
@@ -137,13 +138,13 @@ function renderList(): void {
   inboxEl.replaceChildren(
     ...state.list.map((r) => {
       const li = document.createElement("li");
-      const isNew = !state.seen.has(r.visitId);
+      const isNew = isToday() && !state.seen.has(r.visitId); // 지난 날짜(가져온 이전 기록 포함)에는 NEW를 붙이지 않음
       const notes = r.noteCount ? `소견 ${r.noteCount}${r.pendingNoteCount ? ` · 변환 중 ${r.pendingNoteCount}` : ""}` : "소견 없음";
       li.innerHTML = `<button type="button" aria-pressed="${r.visitId === state.selected}">
           <span class="time">${fmtHM(r.reportedAt)}</span>
           <span class="nm">${esc(r.patientName)}<small>${fmtBirthShort(r.birthDate)}</small></span>
           ${isNew ? '<span class="new"><span class="dot-new" title="새 보고"></span></span>' : "<span></span>"}
-          <span class="sub"><span class="mark ${r.progress}">${PROGRESS_LABEL[r.progress]}</span><span>${notes}</span></span>
+          <span class="sub">${r.progress ? `<span class="mark ${r.progress}">${PROGRESS_LABEL[r.progress]}</span>` : ""}<span>${notes}</span></span>
         </button>`;
       li.querySelector("button")!.addEventListener("click", () => void select(r.visitId));
       return li;
@@ -154,6 +155,7 @@ function renderList(): void {
 /* ---------- 상세 ---------- */
 
 const detailEl = byId("detail");
+detailEl.addEventListener("click", onFrameClick);
 
 async function select(visitId: number): Promise<void> {
   if (state.selected !== visitId) {
@@ -191,14 +193,14 @@ function renderDetail(): void {
     detailEl.innerHTML = '<p class="detail-empty">왼쪽에서 보고를 선택하세요.</p>';
     return;
   }
-  const fig = (title: string, sub: string, right: string, url: string | null, empty: string) => `<figure class="figure">
-      ${url ? `<div class="frame"><img src="${esc(url)}" alt="${title} 사진" decoding="async"></div>` : `<div class="frame">${empty}</div>`}
+  const fig = (title: string, sub: string, right: string, url: string | null, empty: string, zoomVisit?: number) => `<figure class="figure">
+      ${url ? `<div class="frame" data-zoom="${zoomVisit ?? ""}"><img src="${esc(url)}" alt="${title} 사진" decoding="async"></div>` : `<div class="frame">${empty}</div>`}
       <figcaption class="caption"><span><b>${title}</b> ${sub}</span><span>${right}</span></figcaption></figure>`;
 
   const before = v.previous
-    ? fig("직전", fmtMD(v.previous.visitDate), `${v.previous.daysAgo}일 전`, v.previous.photo.url, "")
+    ? fig("직전", fmtMD(v.previous.visitDate), `${v.previous.daysAgo}일 전`, v.previous.photo.url, "", visitIdOf(v.previous.photo.id))
     : fig("직전", "", "", null, "첫 방문");
-  const today = fig("오늘", fmtMD(v.visitDate), v.photo ? `${fmtHM(v.photo.takenAt)} 촬영` : "", v.photo?.url ?? null, "사진 없음");
+  const today = fig("오늘", fmtMD(v.visitDate), v.photo ? `${fmtHM(v.photo.takenAt)} 촬영` : "", v.photo?.url ?? null, "사진 없음", v.id);
 
   detailEl.innerHTML = `
     <div class="detail-head">
@@ -210,7 +212,9 @@ function renderDetail(): void {
       </div>
     </div>
     <section class="block">
-      <div class="section-head"><span class="index">02</span><h2>전후 사진</h2></div>
+      <div class="section-head"><span class="index">02</span><h2>전후 사진</h2><span class="grow"></span>
+        <button class="textbtn" id="zoomBtn" type="button">확대</button>
+        <button class="btn compact" id="compareBtn" type="button">비교 모드</button></div>
       <div class="photos">${before}${today}</div>
     </section>
     <section class="block">
@@ -232,8 +236,54 @@ function renderDetail(): void {
     window.scrollTo({ top: 0 });
   });
   byId("openRec").addEventListener("click", openChooser);
+  wirePhotos();
   renderNotes();
   renderHistory();
+}
+
+/* ---------- 02 전후 사진: 확대 · 비교 모드 ---------- */
+
+/** 이 환자의 사진을 날짜순(오래된 것부터)으로. 방문마다 마지막에 찍은 사진 한 장. */
+function patientPhotos(): (ViewPhoto & { visitId: number; photoId: number })[] {
+  const visits = (state.history?.visits ?? []).filter((h) => h.photo).sort((a, b) => a.visitDate.localeCompare(b.visitDate));
+  const curIdx = visits.findIndex((h) => h.visitId === state.selected);
+  return visits.map((h, k) => ({
+    url: h.photo!.url,
+    date: h.visitDate,
+    visitId: h.visitId,
+    photoId: h.photo!.id,
+    tag: h.visitId === state.selected ? "이번 방문" : k === curIdx - 1 ? "직전" : k === 0 ? "첫 방문" : undefined,
+  }));
+}
+
+function visitIdOf(photoId: number): number | undefined {
+  return state.history?.visits.find((h) => h.photo?.id === photoId)?.visitId;
+}
+
+function wirePhotos(): void {
+  const photos = patientPhotos();
+  const cur = photos.findIndex((p) => p.visitId === state.selected);
+  const zoomBtn = byId<HTMLButtonElement>("zoomBtn");
+  const compareBtn = byId<HTMLButtonElement>("compareBtn");
+  zoomBtn.disabled = photos.length === 0;
+  compareBtn.disabled = photos.length < 2;
+  compareBtn.title = photos.length < 2 ? "비교하려면 사진이 두 장 이상 있어야 합니다" : "전후 사진만 화면 가득 나란히 봅니다";
+
+  zoomBtn.addEventListener("click", () => openZoom(photos, cur >= 0 ? cur : photos.length - 1));
+  compareBtn.addEventListener("click", () => {
+    // 기본: 직전 ↔ 이번 방문. 이번 방문 사진이 없으면 가장 최근 두 장.
+    const after = cur >= 0 ? cur : photos.length - 1;
+    openCompare(photos, Math.max(0, after - 1), after);
+  });
+}
+
+function onFrameClick(e: Event): void {
+  const frame = (e.target as HTMLElement).closest<HTMLElement>(".frame[data-zoom]");
+  if (!frame?.querySelector("img") || !frame.dataset.zoom) return;
+  e.preventDefault(); // 기록 접기(summary) 안에 있지 않지만, 혹시 모를 기본 동작 방지
+  const photos = patientPhotos();
+  const k = photos.findIndex((p) => p.visitId === Number(frame.dataset.zoom));
+  if (k >= 0) openZoom(photos, k);
 }
 
 /* ---------- 04 원장 소견 ---------- */
@@ -540,7 +590,7 @@ function renderHistory(): void {
             ${h.progress ? `<span class="mark ${h.progress}">${PROGRESS_LABEL[h.progress]}</span>` : `<span class="mark Draft">보고 전</span>`}
             <span class="excerpt">${esc(h.memo || (h.notes.length ? `소견 ${h.notes.length}개` : ""))}</span></summary>
           <div class="hist-body">
-            <div class="frame">${h.photo ? `<img src="${esc(h.photo.url)}" alt="${h.visitDate} 사진" loading="lazy">` : "사진 없음"}</div>
+            <div class="frame" data-zoom="${h.visitId}">${h.photo ? `<img src="${esc(h.photo.url)}" alt="${h.visitDate} 사진" loading="lazy">` : "사진 없음"}</div>
             <div class="hist-text"><p class="memo">${h.memo ? esc(h.memo) : '<span class="muted">메모 없음</span>'}</p>${notes}</div>
           </div></details>`;
     })

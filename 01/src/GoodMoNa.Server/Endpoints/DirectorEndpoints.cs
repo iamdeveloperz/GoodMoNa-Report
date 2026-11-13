@@ -26,7 +26,7 @@ public static class DirectorEndpoints
                 v.PatientId,
                 v.Patient.Name,
                 v.Patient.BirthDate,
-                v.Progress!.Value,
+                v.Progress,
                 v.ReportedAt!.Value,
                 v.ReportedBy,
                 v.VoiceNotes.Count,

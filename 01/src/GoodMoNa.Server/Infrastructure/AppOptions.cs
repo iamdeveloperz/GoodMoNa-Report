@@ -57,6 +57,9 @@ public sealed class DataPaths
     public string DatabaseFile => Path.Combine(Root, "goodmona.db");
     public string ConnectionString => $"Data Source={DatabaseFile}";
 
+    /// <summary>이전 기록 가져오기용 사진을 모아 두는 폴더. 웹에서 올리거나, 사진이 많으면 이 폴더에 직접 복사합니다.</summary>
+    public string ImportRoot => Path.Combine(Root, "import");
+
     /// <summary>상대 경로를 데이터 폴더 안의 절대 경로로 바꿉니다. 폴더 밖을 가리키면 거부합니다.</summary>
     public string Resolve(string relativePath)
     {

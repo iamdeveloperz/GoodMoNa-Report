@@ -95,6 +95,10 @@ a { color: inherit; }
 .btn.danger.solid { background: var(--accent); color: var(--accent-ink); }
 .btn.big { min-height: 56px; font-size: var(--t-body); }
 .btn.block { width: 100%; }
+.btn.compact { min-height: 36px; padding: 0 var(--s4); }
+.filebtn { position: relative; overflow: hidden; }
+.filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.row-between { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); }
 .btn:disabled { opacity: .35; cursor: not-allowed; background: transparent; }
 .btn.primary:disabled { background: var(--ink); }
 .textbtn { background: none; border: 0; padding: var(--s1) 0; font-size: var(--t-small); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
@@ -150,5 +154,7 @@ textarea:focus { border-width: 2px; padding: calc(var(--s3) - 1px); }
 @media (max-width: 640px) {
   .masthead-inner { padding: 0 var(--s4); gap: var(--s4); }
   .wordmark span { display: none; }
+  .nav { gap: var(--s4); }
+  .nav a[href="/import"]:not([aria-current]) { display: none; } /* 기록 가져오기는 PC에서 하는 일 */
   .toast { left: var(--s4); bottom: var(--s4); }
 }

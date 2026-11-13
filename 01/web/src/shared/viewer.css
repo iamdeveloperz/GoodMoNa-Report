@@ -1,0 +1,83 @@
+/* 확대 · 비교 모드: 사진만 보이도록 검은 바탕 전체 화면. 색은 다크 고정(사진 대비용). */
+.viewer-open, .viewer-open body { overflow: hidden; }
+
+.viewer, .compare {
+  position: fixed; inset: 0; z-index: 90; background: #000; color: #f2f2ee;
+  display: flex; flex-direction: column; overscroll-behavior: contain;
+  font-family: var(--font);
+}
+
+.pane {
+  position: relative; overflow: hidden; touch-action: none; cursor: grab;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+.pane.grabbing { cursor: grabbing; }
+.pane img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+  transform-origin: 0 0; pointer-events: none; -webkit-user-drag: none;
+}
+.glide .pane img { transition: transform .22s ease-out; }
+
+.vbtn {
+  min-height: 40px; min-width: 40px; padding: 0 14px; border: 1px solid #5a5a55; background: transparent;
+  color: #f2f2ee; font-weight: 600; font-size: 14px;
+}
+.vbtn:hover { background: #1f1f1d; border-color: #f2f2ee; }
+.viewer-hint { font-size: 12px; color: #85857f; }
+.grow { flex: 1; }
+
+/* 확대 */
+.viewer-top {
+  display: flex; align-items: center; gap: 8px; height: 60px; flex: none;
+  padding: 0 max(16px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
+  border-bottom: 1px solid #2e2e2b;
+}
+.viewer-title { font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
+.viewer-level { font-size: 12px; color: #b4b4ae; min-width: 4em; text-align: right; margin-right: 8px; }
+.viewer-stage { position: relative; flex: 1; min-height: 0; display: flex; }
+.viewer-stage .pane { flex: 1; }
+.viewer-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 72px;
+  background: rgba(0, 0, 0, .55); color: #f2f2ee; border: 1px solid #2e2e2b; font-size: 20px;
+}
+.viewer-nav.prev { left: max(12px, env(safe-area-inset-left)); }
+.viewer-nav.next { right: max(12px, env(safe-area-inset-right)); }
+.viewer-nav:hover { background: #1f1f1d; }
+.viewer-foot { flex: none; border-top: 1px solid #2e2e2b; padding-bottom: env(safe-area-inset-bottom); }
+.viewer-foot .viewer-hint { padding: 8px max(20px, env(safe-area-inset-left)) 0; }
+.viewer-strip { display: flex; overflow-x: auto; scrollbar-width: none; padding: 0 max(12px, env(safe-area-inset-left)); }
+.viewer-strip button {
+  flex: none; min-width: 108px; padding: 10px 14px 12px; background: none; border: 0;
+  color: #85857f; text-align: left; box-shadow: inset 0 2px 0 transparent;
+}
+.viewer-strip button b { display: block; font-size: 14px; }
+.viewer-strip button small { display: block; font-size: 12px; min-height: 1.4em; }
+.viewer-strip button[aria-selected="true"] { color: #f2f2ee; box-shadow: inset 0 3px 0 #f2f2ee; }
+
+/* 비교: 5:5 */
+.compare-panes { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: #2e2e2b; }
+.compare .pane { background: #000; }
+.pane-tag {
+  position: absolute; left: 16px; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 1; pointer-events: none;
+  background: rgba(0, 0, 0, .62); padding: 8px 14px; font-size: 18px; letter-spacing: -0.01em;
+}
+.pane-tag b { margin-right: 6px; }
+.pane-tag small { font-size: 13px; color: #b4b4ae; margin-left: 10px; }
+.compare-bar {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
+  background: rgba(0, 0, 0, .82); border-bottom: 1px solid #2e2e2b; transition: opacity .2s, transform .2s;
+}
+.compare-bar.hide { opacity: 0; transform: translateY(-100%); pointer-events: none; }
+.pick { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+.pick select {
+  min-height: 40px; padding: 0 10px; background: #0e0e0e; color: #f2f2ee; border: 1px solid #5a5a55;
+  font: inherit; font-weight: 600; border-radius: 0;
+}
+
+@media (max-width: 640px) {
+  .viewer-hint { display: none; }
+  .viewer-title { font-size: 15px; }
+  .pane-tag { font-size: 14px; padding: 6px 10px; left: 8px; }
+  .pane-tag small { display: block; margin: 0; }
+}

@@ -71,7 +71,7 @@ public sealed record ReportListItemDto(
     int PatientId,
     string PatientName,
     DateOnly BirthDate,
-    Progress Progress,
+    Progress? Progress,
     DateTime ReportedAt,
     string? ReportedBy,
     int NoteCount,

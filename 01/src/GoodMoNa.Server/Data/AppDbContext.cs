@@ -41,6 +41,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             e.Property(p => p.StoragePath).HasMaxLength(200);
             e.Property(p => p.ContentType).HasMaxLength(50);
+            e.Property(p => p.ContentHash).HasMaxLength(64);
+            e.HasIndex(p => new { p.VisitId, p.ContentHash });
         });
 
         b.Entity<CaptureToken>(e =>

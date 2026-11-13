@@ -81,6 +81,10 @@ namespace GoodMoNa.Server.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ContentType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -102,7 +106,7 @@ namespace GoodMoNa.Server.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("VisitId");
+                    b.HasIndex("VisitId", "ContentHash");
 
                     b.ToTable("Photos");
                 });
