@@ -3,6 +3,7 @@ using GoodMoNa.Server.Data;
 using GoodMoNa.Server.Hubs;
 using GoodMoNa.Server.Infrastructure;
 using GoodMoNa.Server.Transcription;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -30,7 +31,7 @@ public static class NoteEndpoints
     }
 
     private static async Task<IResult> Upload(
-        int visitId, IFormFile? audio, string? source, AppDbContext db, MediaStorage storage, ClinicClock clock,
+        int visitId, IFormFile? audio, [FromForm] string? source, AppDbContext db, MediaStorage storage, ClinicClock clock,
         TranscriptionQueue queue, IOptions<AppOptions> options, IHubContext<VisitHub> hub, CancellationToken ct)
     {
         var visit = await db.Visits.FirstOrDefaultAsync(v => v.Id == visitId, ct);

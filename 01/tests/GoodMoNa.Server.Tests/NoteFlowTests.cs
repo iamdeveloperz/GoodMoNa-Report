@@ -96,8 +96,9 @@ public sealed class NoteFlowTests : IDisposable
         Assert.Single(done.Transcript.Segments);
 
         // 같은 방문에 여러 녹음: 순번이 이어진다
-        var second = (await (await UploadNote(visitId, Wav(1))).Content.ReadFromJsonAsync<NoteDto>(Json))!;
+        var second = (await (await UploadNote(visitId, Wav(1), "FilePick")).Content.ReadFromJsonAsync<NoteDto>(Json))!;
         Assert.Equal(2, second.Seq);
+        Assert.Equal(NoteSource.FilePick, second.Source); // 폼의 source 필드가 저장된다
         await WaitFor(visitId, second.Id, NoteStatus.Transcribed);
         Assert.Equal(2, await Db(db => db.Transcripts.CountAsync()));
     }
