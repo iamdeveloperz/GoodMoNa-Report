@@ -4,7 +4,7 @@ namespace GoodMoNa.Server.Hubs;
 
 /// <summary>
 /// 보고 앱은 보고 있는 방문의 그룹에 들어가 "사진 도착"을 받고,
-/// 원장 앱(2번 과제)은 director 그룹에 들어가 "새 보고"를 받습니다.
+/// 원장 화면(/director)은 director 그룹에 들어가 "새 보고"를 받습니다.
 /// </summary>
 public sealed class VisitHub : Hub
 {
