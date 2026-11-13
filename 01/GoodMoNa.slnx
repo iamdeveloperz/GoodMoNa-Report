@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GoodMoNa.Server/GoodMoNa.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GoodMoNa.Server.Tests/GoodMoNa.Server.Tests.csproj" />
+  </Folder>
+</Solution>

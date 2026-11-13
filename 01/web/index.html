@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>굿모나 보고</title>
+  <link rel="stylesheet" href="/src/shared/base.css">
+  <link rel="stylesheet" href="/src/report/report.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><b>GoodMoNa 보고</b><span>간호사 PC·태블릿</span></div>
+      <span class="conn" id="conn" data-state="connecting">연결 중</span>
+    </div>
+  </header>
+
+  <main class="report-layout">
+    <aside class="panel search">
+      <label class="label" for="q">환자 검색</label>
+      <input type="search" id="q" autocomplete="off" placeholder="이름을 입력하세요" autofocus>
+      <ul class="results" id="results" aria-live="polite"></ul>
+      <p class="empty-note" id="noResult" hidden></p>
+      <button class="linkbtn" id="toggleReg" type="button" aria-expanded="false" aria-controls="regForm">+ 신규 환자 등록</button>
+      <form class="reg" id="regForm" hidden novalidate>
+        <label class="label" for="regName">이름</label>
+        <input type="text" id="regName" maxlength="30" autocomplete="off">
+        <label class="label" for="regBirth">생년월일 (YYYY-MM-DD 또는 YYMMDD)</label>
+        <input type="text" id="regBirth" inputmode="numeric" placeholder="1990-03-12" autocomplete="off">
+        <p class="err" id="regErr" role="alert" hidden></p>
+        <button class="btn primary" type="submit">등록하고 선택</button>
+      </form>
+    </aside>
+
+    <section class="panel visit" id="visitPanel" aria-live="polite">
+      <p class="muted">왼쪽에서 환자를 검색해 선택하세요.</p>
+    </section>
+  </main>
+
+  <div class="scrim" id="qrScrim" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+      <h3 id="qrTitle">폰 카메라로 스캔하세요</h3>
+      <p class="muted" id="qrWho"></p>
+      <canvas id="qrCanvas" aria-label="촬영용 QR 코드"></canvas>
+      <p>남은 시간 <span class="timer" id="qrTimer">10:00</span></p>
+      <p class="muted small" id="qrUrl"></p>
+      <div class="row center">
+        <button class="btn" id="qrRenew" type="button" hidden>새 QR 받기</button>
+        <button class="btn" id="qrClose" type="button">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/report/main.ts"></script>
+</body>
+</html>
