@@ -106,3 +106,7 @@ cloudflared tunnel login            # 처음 한 번: 브라우저에서 hsdevs.
 서비스를 지울 때는 `.\deploy\uninstall.ps1` (데이터와 터널은 남김).
 
 환자 정보가 오가므로, 실제 데이터를 넣기 전에 `/report`·`/director`·`/import`와 API에 Cloudflare Access(이메일 OTP 등)를 거는 것을 권장합니다. 촬영 페이지 `/capture/*`와 `/api/capture/*`는 QR 토큰이 권한이므로 Access에서 제외합니다.
+
+## CRM 연동
+
+원장이 기록 버튼을 누르면 CRM으로 자동 전송하는 방안(Outbox 구조, CRM 종류별 연동, 방화벽·고정 IP 등 문제와 해결)은 [docs/crm-integration.md](docs/crm-integration.md)에 정리했습니다. CRM이 정해지면 어댑터 하나만 붙이면 되도록 설계했습니다.
