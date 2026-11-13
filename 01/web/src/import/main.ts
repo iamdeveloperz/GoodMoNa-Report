@@ -2,6 +2,9 @@ import "../shared/base.css";
 import "./import.css";
 import { ApiError, api, errorMessage, toApiError } from "../shared/api";
 import { byId, esc, toast } from "../shared/format";
+import { showWho } from "../shared/session";
+
+void showWho(byId("who"), true);
 
 /* ---------- 서버 DTO ---------- */
 

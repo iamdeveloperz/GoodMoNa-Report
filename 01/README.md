@@ -11,6 +11,20 @@
 | `/import` | 이전 전산 기록 가져오기 (CSV + 사진) |
 | `/capture/{token}` | 폰 촬영 (QR로 열림) |
 
+### 로그인과 권한
+
+로그인은 02 인트라넷 서버가 맡습니다(가입 → 대표원장·관리자 승인 → 로그인). 01은 직원 DB 없이, 02가 발급한 출입증(gm_access 쿠키의 JWT)을 02의 공개키로 확인하고 직무로 권한을 나눕니다. 자세한 구조는 [../02/README.md](../02/README.md).
+
+| 화면 · API | 허용 직무 |
+| --- | --- |
+| `/report`, 환자·방문·QR·보고·사진 API | 대표원장 · 원장 · 간호사 |
+| `/director`, 받은 보고·환자 기록·녹음 API, 실시간 원장 알림 | 대표원장 · 원장 |
+| `/import`, 가져오기 API | 대표원장 · 관리자 (+ 서버 PC에서만) |
+| `/capture/{token}`, `/api/capture/*` | 로그인 없음 — QR 토큰이 권한 |
+| `/`, `/healthz` | 누구나 |
+
+로그인 안 됨 → API는 401, 화면은 `/login?next=…`로. 직무가 안 맞음 → API 403, 화면은 "권한 없음" 안내. 보고하면 보고자에 로그인한 직원의 이름·직원번호가 남습니다(`Visit.ReportedBy`, `ReportedById`). 출입증은 15분마다 화면이 자동으로 갱신합니다.
+
 ### 간호사 보고
 
 | 단계 | 화면 | 서버 |
@@ -106,7 +120,7 @@ cloudflared tunnel login            # 처음 한 번: 브라우저에서 hsdevs.
 
 서비스를 지울 때는 `.\deploy\uninstall.ps1` (데이터와 터널은 남김).
 
-환자 정보가 오가므로, 실제 데이터를 넣기 전에 `/report`·`/director`·`/import`와 API에 Cloudflare Access(이메일 OTP 등)를 거는 것을 권장합니다. 촬영 페이지 `/capture/*`와 `/api/capture/*`는 QR 토큰이 권한이므로 Access에서 제외합니다.
+화면과 API는 02 인트라넷의 로그인(승인된 직원만)으로 보호됩니다. 02와 함께 배포하려면 리포 맨 위의 `deploy/install-all.ps1`을 쓰세요(02 → 01 순서). 터널은 같은 주소에서 로그인 관련 경로(`/login`, `/signup`, `/intranet*`, `/api/auth/*`, `/api/admin/*`, `/.well-known/*`)를 02(localhost:5002)로, 나머지를 01로 보냅니다. 더 막고 싶으면 Cloudflare Access를 추가로 걸 수 있습니다(촬영 `/capture/*`, `/api/capture/*`는 제외).
 
 ## CRM 연동
 

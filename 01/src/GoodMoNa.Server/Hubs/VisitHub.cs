@@ -1,3 +1,4 @@
+using GoodMoNa.Server.Auth;
 using Microsoft.AspNetCore.SignalR;
 
 namespace GoodMoNa.Server.Hubs;
@@ -26,5 +27,11 @@ public sealed class VisitHub : Hub
 
     public Task LeaveVisit(int visitId) => Groups.RemoveFromGroupAsync(Context.ConnectionId, VisitGroup(visitId));
 
-    public Task JoinDirector() => Groups.AddToGroupAsync(Context.ConnectionId, DirectorGroup);
+    /// <summary>새 보고 알림은 원장·대표원장만 받습니다.</summary>
+    public Task JoinDirector()
+    {
+        if (Context.User is null || !Policies.DirectorRoles.Any(Context.User.IsInRole))
+            throw new HubException("원장 화면 알림은 원장·대표원장만 받을 수 있습니다.");
+        return Groups.AddToGroupAsync(Context.ConnectionId, DirectorGroup);
+    }
 }

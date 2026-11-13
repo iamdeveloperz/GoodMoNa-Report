@@ -1,4 +1,5 @@
 import * as signalR from "@microsoft/signalr";
+import { refreshSession } from "./api";
 
 /**
  * SignalR 연결을 만들고 머리띠의 연결 표시를 갱신합니다.
@@ -24,6 +25,8 @@ export function connectLive(statusEl: HTMLElement, onReady: (hub: signalR.HubCon
       await onReady(hub);
     } catch {
       set("disconnected", "연결 끊김");
+      // 출입증이 만료돼 연결이 거절됐을 수 있으므로 갱신해 두고 다시 시도합니다.
+      await refreshSession();
       window.setTimeout(start, 5000);
     }
   };

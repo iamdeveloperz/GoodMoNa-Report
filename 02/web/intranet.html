@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafaf7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230e0e0e%27/%3E%3Crect x=%274%27 y=%2710%27 width=%278%27 height=%272%27 fill=%27%23d7261e%27/%3E%3C/svg%3E">
+  <title>인트라넷 — GoodMoNa</title>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="/intranet">GoodMoNa<span>인트라넷</span></a>
+      <nav class="nav" aria-label="화면">
+        <a href="/intranet" aria-current="page">홈</a>
+        <a href="/report" data-roles="Owner,Doctor,Nurse" hidden>보고</a>
+        <a href="/director" data-roles="Owner,Doctor" hidden>결과 확인</a>
+        <a href="/intranet/admin" data-roles="Owner,Admin" hidden>직원 관리</a>
+      </nav>
+      <span class="who" id="who"></span>
+    </div>
+  </header>
+  <main class="home">
+    <p class="hello" id="hello">&nbsp;</p>
+    <section class="block">
+      <div class="section-head"><span class="index">01</span><h2>바로가기</h2></div>
+      <div class="tiles" id="tiles"></div>
+    </section>
+    <section class="block">
+      <div class="section-head"><span class="index">02</span><h2>준비 중</h2></div>
+      <ul class="soon">
+        <li>공지사항</li><li>연차</li><li>출퇴근</li><li>품의·결재</li><li>주차·차량</li><li>사내 메신저</li><li>LLM 위키 (CS 응대)</li>
+      </ul>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/intranet/main.ts"></script>
+</body>
+</html>

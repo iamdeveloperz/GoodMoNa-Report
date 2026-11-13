@@ -9,6 +9,7 @@
 
   <!-- 01과 같은 버전을 씁니다. Whisper·SignalR 클라이언트 등이 필요해지면 01의 csproj·package.json에서 그대로 가져오세요. -->
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

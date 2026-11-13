@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using GoodMoNa.Server.Auth;
 using GoodMoNa.Server.Contracts;
 using GoodMoNa.Server.Data;
 using GoodMoNa.Server.Hubs;
@@ -11,7 +13,6 @@ namespace GoodMoNa.Server.Endpoints;
 public static class VisitEndpoints
 {
     public const int MaxMemoLength = 500;
-    public const string DefaultReporter = "간호사";
 
     public static void MapVisitEndpoints(this IEndpointRouteBuilder app)
     {
@@ -51,7 +52,7 @@ public static class VisitEndpoints
     }
 
     private static async Task<IResult> SubmitReport(
-        int visitId, SubmitReportRequest req, AppDbContext db, ClinicClock clock, IHubContext<VisitHub> hub, CancellationToken ct)
+        int visitId, SubmitReportRequest req, ClaimsPrincipal user, AppDbContext db, ClinicClock clock, IHubContext<VisitHub> hub, CancellationToken ct)
     {
         if (req.Progress is not { } progress || !Enum.IsDefined(progress))
             return Problems.Validation("progress", "경과(호전·유지·악화)를 선택해 주세요.");
@@ -70,7 +71,8 @@ public static class VisitEndpoints
         visit.Progress = progress;
         visit.Memo = memo;
         visit.ReportedAt = now;
-        visit.ReportedBy = DefaultReporter;
+        // 로그인한 직원(출입증)으로 보고자를 남깁니다.
+        (visit.ReportedById, visit.ReportedBy) = StaffAuth.Who(user);
         await db.SaveChangesAsync(ct);
 
         // 보고가 끝나면 남은 QR은 더 이상 쓸 수 없습니다.

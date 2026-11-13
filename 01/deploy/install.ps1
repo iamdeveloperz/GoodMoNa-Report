@@ -18,6 +18,8 @@ param(
     [string]$InstallRoot = "C:\GoodMoNa\01",
     [int]$Port = 5001,
     [string]$ModelPath = "C:\GoodMoNa\models\ggml-large-v3-turbo.bin",
+    # 02 인트라넷(로그인·출입증 발급) 서버 포트. 터널이 로그인 관련 경로를 여기로 보내고, 01은 여기서 서명 공개키를 받습니다.
+    [int]$IntranetPort = 5002,
     [switch]$SkipTunnel
 )
 
@@ -28,7 +30,8 @@ $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host "관리자 권한이 필요합니다. UAC 창에서 '예'를 눌러 주세요." -ForegroundColor Yellow
     $argList = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-NoExit", "-File", "`"$PSCommandPath`"",
-        "-Hostname", $Hostname, "-TunnelName", $TunnelName, "-InstallRoot", "`"$InstallRoot`"", "-Port", $Port, "-ModelPath", "`"$ModelPath`"")
+        "-Hostname", $Hostname, "-TunnelName", $TunnelName, "-InstallRoot", "`"$InstallRoot`"", "-Port", $Port, "-ModelPath", "`"$ModelPath`"",
+        "-IntranetPort", $IntranetPort)
     if ($SkipTunnel) { $argList += "-SkipTunnel" }
     Start-Process powershell.exe -Verb RunAs -ArgumentList $argList
     return
@@ -104,7 +107,10 @@ Invoke-Native "dotnet publish" { dotnet publish (Join-Path $root "src\GoodMoNa.S
 # 운영 설정: 데이터 폴더·외부 주소. (예시 데이터는 실제 환자 데이터를 넣기 전까지만 켜 두세요)
 $settings = [ordered]@{
     Kestrel = @{ Endpoints = @{ Report = @{ Url = "http://localhost:$Port" } } }
-    App     = [ordered]@{ DataRoot = $dataDir; PublicBaseUrl = "https://$Hostname"; SeedDemoData = $true; Whisper = @{ ModelPath = $ModelPath } }
+    App     = [ordered]@{
+        DataRoot = $dataDir; PublicBaseUrl = "https://$Hostname"; SeedDemoData = $true; Whisper = @{ ModelPath = $ModelPath }
+        Auth = @{ Authority = "http://localhost:$IntranetPort" }
+    }
 }
 $settings | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $appDir "appsettings.Production.json") -Encoding UTF8
 
@@ -148,12 +154,17 @@ elseif (-not (Test-Path $credDst)) { Fail "터널 자격 증명($id.json)을 찾
 
 # 서비스(LocalSystem)는 사용자 폴더를 못 보므로 설정·자격 증명을 설치 폴더에 둡니다.
 $config = Join-Path $tunnelDir "config.yml"
+# 같은 주소를 경로로 나눕니다: 로그인·직원 관리(02 인트라넷) / 나머지 진료 화면(01). 위에서부터 먼저 맞는 규칙을 씁니다.
+$intranetPaths = '^/(login|signup|intranet|intranet-assets|\.well-known|api/auth|api/admin)(/.*)?$'
 @"
 tunnel: $id
 credentials-file: '$credDst'
 logfile: '$(Join-Path $tunnelDir "cloudflared.log")'
 no-autoupdate: true
 ingress:
+  - hostname: $Hostname
+    path: '$intranetPaths'
+    service: http://localhost:$IntranetPort
   - hostname: $Hostname
     service: http://localhost:$Port
   - service: http_status:404

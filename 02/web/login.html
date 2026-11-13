@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafaf7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230e0e0e%27/%3E%3Crect x=%274%27 y=%2710%27 width=%278%27 height=%272%27 fill=%27%23d7261e%27/%3E%3C/svg%3E">
+  <title>로그인 — GoodMoNa</title>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="/intranet">GoodMoNa<span>인트라넷</span></a>
+    </div>
+  </header>
+  <main class="auth">
+    <p class="auth-lead">굿모나의원 직원 인트라넷<small>보고·결과 확인·직원 관리를 한 계정으로 씁니다. 계정은 가입 신청 후 대표원장·관리자가 승인해야 쓸 수 있습니다.</small></p>
+    <section class="auth-card">
+      <h1>로그인</h1>
+      <p class="notice" id="bootstrap" hidden>아직 관리자 계정이 없습니다. 이 PC는 서버이므로 <a href="/signup">첫 관리자 계정을 만들 수 있습니다 →</a></p>
+      <form class="form" id="form" novalidate>
+        <label class="field"><span class="label">아이디</span><input type="text" id="loginId" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+        <label class="field"><span class="label">비밀번호</span><input type="password" id="password" autocomplete="current-password" required></label>
+        <p class="err" id="err" role="alert" hidden></p>
+        <button class="btn primary big block" type="submit" id="submit">로그인</button>
+      </form>
+      <p class="meta">계정이 없으면 <a href="/signup">가입 신청</a>을 해 주세요. 승인되면 로그인할 수 있습니다.</p>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/login/main.ts"></script>
+</body>
+</html>

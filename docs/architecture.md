@@ -37,7 +37,8 @@ ASP.NET Core 서버 ── Windows 서비스 GoodMoNa01
 | 디자인 | 자체 CSS (`web/src/shared/base.css`), Pretendard 글꼴 | 모더니스트: 무채색 + 시그널 레드 한 색, 그림자·둥근 모서리 없음, 괘선과 여백으로 구분 |
 | 테스트 | xUnit + `WebApplicationFactory` (실제 HTTP·SQLite로 통합 테스트) | 시계(`TimeProvider`)와 STT(`ISpeechToText`)를 바꿔 끼워 QR 만료·변환 경합까지 재현 |
 | 공개 · HTTPS | Cloudflare Tunnel (`cloudflared`, 터널 이름 `goodmona`) | 폰 카메라·마이크는 HTTPS에서만 동작. 인증서·포트포워딩 불필요 |
-| 배포 | PowerShell `01/deploy/install.ps1` (관리자 권한, 다시 실행해도 안전) | 빌드 → publish → 서비스 등록 → 터널 → 외부 확인을 한 번에 |
+| 배포 | PowerShell `deploy/install-all.ps1` (02 → 01 순서, 관리자 권한, 다시 실행해도 안전) | 빌드 → publish → 서비스 등록 → 터널 → 외부 확인을 한 번에 |
+| 로그인 | 02가 JWT(RS256) 출입증 발급, 01은 JwtBearer로 공개키 확인 | 직원 DB는 02 한 곳에만. 01은 매 요청 02에 묻지 않음 |
 | 소스 관리 | GitHub `iamdeveloperz/GoodMoNa-Report`, 과제별 폴더(`01/`, `02/` …) | |
 
 ## 3. 폴더 구조 (01 기준, 02도 같은 모양)
@@ -115,15 +116,17 @@ Patient (이름+생년월일 유일)
 | 항목 | 01 | 02 (예약) |
 | --- | --- | --- |
 | 개발 서버 | http://localhost:5011 | http://localhost:5012 |
-| Vite 개발 화면 | http://localhost:5173 (→ 5011 프록시) | http://localhost:5174 (→ 5012 프록시) |
+| Vite 개발 화면 | http://localhost:5173 (→ 5011, 로그인 경로는 5012로 프록시) | http://localhost:5174 (→ 5012 프록시) |
 | 운영 서버 | localhost:5001, 서비스 `GoodMoNa01` | localhost:5002, 서비스 `GoodMoNa02` |
-| 설치 폴더 | `C:\GoodMoNa\01\{app,data,cloudflared}` | `C:\GoodMoNa\02\…` |
-| 외부 주소 | https://goodmona.hsdevs.com | 미정 (같은 터널에 경로나 호스트 추가) |
+| 설치 폴더 | `C:\GoodMoNa\01\{app,data,cloudflared}` | `C:\GoodMoNa\02\{app,data}` (data\keys에 서명 개인키) |
+| 외부 주소 | https://goodmona.hsdevs.com | 같은 주소, 로그인·인트라넷 경로만 (터널 경로 규칙) |
 | Whisper 모델 | `C:\GoodMoNa\models` (공용) | 같은 파일을 쓸 수 있음 |
 
 ## 9. 보안 · 운영 현황
 
-- **로그인이 없습니다.** 실제 환자 데이터 전에 Cloudflare Access(이메일 OTP)를 `/report`, `/director`, `/import`, `/api/*`에 걸어야 합니다. `/capture/*`, `/api/capture/*`는 QR 토큰이 권한이므로 예외.
+- **로그인 (02가 발급, 01은 확인만)**: 직원 DB는 02 인트라넷에만 있습니다. 가입 신청 → 대표원장·관리자 승인 → 로그인. 02가 RS256 JWT 출입증(15분, sub·name·role)을 gm_access 쿠키로 주고, 01은 02의 `/.well-known/jwks.json` 공개키로 서명만 확인해 직무별로 막습니다. 갱신 토큰(14일)은 회전하고 재사용되면 그 직원의 세션을 모두 끊습니다. 퇴사·직무 변경은 늦어도 15분 안에 01·02 모두 반영. 자세한 표는 `02/README.md`.
+- 01 권한: 보고 = 대표원장·원장·간호사, 결과 확인·녹음 = 대표원장·원장, 가져오기 = 대표원장·관리자. 폰 촬영 `/capture/*`는 QR 토큰이 권한.
+- 같은 주소(goodmona.hsdevs.com)를 Cloudflare 터널이 경로로 나눕니다: `/login`·`/signup`·`/intranet*`·`/api/auth/*`·`/api/admin/*`·`/.well-known/*` → 02(5002), 나머지 → 01(5001). 그래서 쿠키 하나로 양쪽에 로그인됩니다.
 - 가져오기 API는 `Cf-Connecting-IP` 헤더(Cloudflare 경유 표시)가 있으면 기본 403.
 - 폰 화면에는 가린 이름(김\*수)만 보냄. 사진 응답은 `Cache-Control: private`.
 - 백업 없음: `C:\GoodMoNa\01\data`를 주기적으로 다른 곳에 복사해야 함.

@@ -16,6 +16,9 @@ import {
 } from "../shared/api";
 import { byId, esc, fmtBirth, fmtHM, fmtMD, fmtRemain, installImageFallback, toast } from "../shared/format";
 import { connectLive, isConnected } from "../shared/live";
+import { showWho } from "../shared/session";
+
+void showWho(byId("who"), true);
 
 /* ---------- 상태 ---------- */
 

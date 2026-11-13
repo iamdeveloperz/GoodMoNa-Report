@@ -37,6 +37,9 @@ public sealed class Visit
     public DateTime? ReportedAt { get; set; }
     public string? ReportedBy { get; set; }
 
+    /// <summary>보고한 직원번호(02 인트라넷의 직원 id). 이름(ReportedBy)은 그때 이름 그대로 남깁니다. 이전 기록은 비어 있음.</summary>
+    public int? ReportedById { get; set; }
+
     /// <summary>다시 찍은 사진도 모두 남깁니다. 화면에는 가장 최근 사진을 씁니다.</summary>
     public List<Photo> Photos { get; set; } = [];
 

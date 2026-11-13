@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using GoodMoNa.Server.Auth;
 using GoodMoNa.Server.Data;
 using GoodMoNa.Server.Endpoints;
 using GoodMoNa.Server.Hubs;
@@ -30,6 +31,9 @@ builder.Services.AddHostedService<TranscriptionWorker>();
 builder.Services.AddScoped<LegacyImporter>();
 builder.Services.AddSingleton<ImportJobs>();
 
+// 로그인: 02 인트라넷 서버가 발급한 출입증으로 간호사·원장·관리자를 구분
+builder.Services.AddStaffAuth();
+
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddSignalR().AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddProblemDetails();
@@ -52,18 +56,26 @@ using (var scope = app.Services.CreateScope())
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseAuthentication();
+app.UsePageGate();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseAuthorization();
 
-app.MapPatientEndpoints();
-app.MapVisitEndpoints();
+// 권한: 간호사·원장·대표원장(Clinical) / 원장·대표원장(Director) / 대표원장·관리자(ImportAdmin).
+// 폰 촬영(/api/capture)은 로그인 없이 QR 토큰이 권한입니다.
+var clinical = app.MapGroup("").RequireAuthorization(Policies.Clinical);
+clinical.MapPatientEndpoints();
+clinical.MapVisitEndpoints();
+clinical.MapPhotoEndpoints();
+var director = app.MapGroup("").RequireAuthorization(Policies.Director);
+director.MapNoteEndpoints();
+director.MapDirectorEndpoints();
+app.MapGroup("").RequireAuthorization(Policies.ImportAdmin).MapImportEndpoints();
 app.MapCaptureEndpoints();
-app.MapPhotoEndpoints();
-app.MapNoteEndpoints();
-app.MapDirectorEndpoints();
-app.MapImportEndpoints();
-app.MapHub<VisitHub>(VisitHub.Path);
+app.MapHub<VisitHub>(VisitHub.Path).RequireAuthorization(Policies.Clinical);
+app.MapGet("/login", PageGate.LocalLoginRedirect);
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
 // 화면: / (역할 선택) · /report (간호사 보고) · /director (원장 결과 확인) · /import (이전 기록 가져오기) · /capture/{token} (폰 촬영)

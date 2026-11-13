@@ -1,8 +1,16 @@
+using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using GoodMoNa.Server.Auth;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using GoodMoNa.Server.Transcription;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 
 namespace GoodMoNa.Server.Tests;
 
@@ -78,7 +86,52 @@ public sealed class TestApp : WebApplicationFactory<Program>
         {
             s.Replace(ServiceDescriptor.Singleton<TimeProvider>(Time));
             s.Replace(ServiceDescriptor.Singleton<ISpeechToText>(Stt));
+
+            // 02 인트라넷 서버 대신 테스트 키로 서명 확인 (실제로는 02의 /.well-known/jwks.json에서 받음)
+            s.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
+            {
+                var config = new OpenIdConnectConfiguration { Issuer = Issuer };
+                config.SigningKeys.Add(SigningKey);
+                o.Configuration = config;
+                o.ConfigurationManager = new StaticConfigurationManager<OpenIdConnectConfiguration>(config);
+            });
         });
+    }
+
+    /* ---------- 출입증 (02가 발급하는 것과 같은 모양의 JWT) ---------- */
+
+    public const string Issuer = "goodmona-intranet";
+    private static readonly RsaSecurityKey SigningKey = new(RSA.Create(2048)) { KeyId = "test" };
+
+    /// <summary>테스트 시계 기준으로 발급한 출입증. 기본 유효 기간은 길게 (QR 만료 테스트처럼 시간을 넘겨도 로그인 유지)</summary>
+    public string Token(string role, int staffId = 1, string name = "테스트", TimeSpan? lifetime = null, SecurityKey? key = null)
+    {
+        var now = Time.GetUtcNow().UtcDateTime;
+        return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
+        {
+            Issuer = Issuer,
+            Audience = "goodmona",
+            IssuedAt = now,
+            NotBefore = now,
+            Expires = now + (lifetime ?? TimeSpan.FromDays(365)),
+            SigningCredentials = new SigningCredentials(key ?? SigningKey, SecurityAlgorithms.RsaSha256),
+            Claims = new Dictionary<string, object> { ["sub"] = staffId.ToString(), ["name"] = name, ["role"] = role },
+        });
+    }
+
+    /// <summary>해당 직무로 로그인한 클라이언트. role이 null이면 로그인 안 한 상태.</summary>
+    public HttpClient ClientAs(string? role, string name = "테스트", int staffId = 1)
+    {
+        var c = CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        c.DefaultRequestHeaders.Authorization = role is null ? null : new AuthenticationHeaderValue("Bearer", Token(role, staffId, name));
+        return c;
+    }
+
+    /// <summary>기존 테스트가 쓰는 기본 클라이언트는 대표원장(모든 권한)으로 로그인한 상태입니다.</summary>
+    protected override void ConfigureClient(HttpClient client)
+    {
+        base.ConfigureClient(client);
+        client.DefaultRequestHeaders.Authorization ??= new AuthenticationHeaderValue("Bearer", Token(StaffRoles.Owner, 1, "대표원장"));
     }
 
     protected override void Dispose(bool disposing)

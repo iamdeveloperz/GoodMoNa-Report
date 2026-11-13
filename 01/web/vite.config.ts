@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from "vite";
 import { resolve } from "node:path";
 
 const server = "http://localhost:5011"; // 개발 서버 (운영 서비스는 5001)
+const intranet = "http://localhost:5012"; // 02 인트라넷 개발 서버: 로그인·출입증 (운영에서는 Cloudflare가 경로로 나눔)
 
 /** 개발 서버에서도 /report · /director · /import · /capture/{token} 주소가 각 페이지를 열도록 합니다. (운영에서는 ASP.NET이 처리) */
 const pageRoutes: Plugin = {
@@ -37,6 +38,13 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      // 02로 가는 경로를 먼저 (운영의 Cloudflare 경로 규칙과 같게)
+      "/api/auth": intranet,
+      "/api/admin": intranet,
+      "/.well-known": intranet,
+      "/login": intranet,
+      "/signup": intranet,
+      "/intranet": intranet,
       "/api": server,
       "/hubs": { target: server, ws: true },
     },

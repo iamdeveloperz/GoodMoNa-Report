@@ -180,6 +180,9 @@ namespace GoodMoNa.Server.Data.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("ReportedById")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)

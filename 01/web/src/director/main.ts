@@ -15,6 +15,9 @@ import {
 import { MAX_RECORD_MS, Chime, canRecordInApp, startRecorder, toWav16k, type Recorder } from "../shared/audio";
 import { addDaysIso, byId, esc, fmtBirth, fmtBirthShort, fmtDateLong, fmtDuration, fmtHM, fmtMD, installImageFallback, todayIso, toast } from "../shared/format";
 import { connectLive } from "../shared/live";
+import { showWho } from "../shared/session";
+
+void showWho(byId("who"), true);
 import { openCompare, openZoom, type ViewPhoto } from "../shared/viewer";
 
 /* ---------- 상태 ---------- */

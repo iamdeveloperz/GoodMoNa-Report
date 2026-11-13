@@ -144,7 +144,29 @@ export function syncClock(res: Response): void {
   clockOffsetMs = Math.abs(offset) < 2000 ? 0 : offset;
 }
 
-export async function api<T>(method: string, url: string, body?: unknown): Promise<T> {
+/* ---------- 로그인 유지 ---------- */
+
+/**
+ * 출입증(gm_access)은 15분짜리입니다. 만료되어 401이 오면 02 인트라넷의 /api/auth/refresh로 새로 받고 한 번 다시 보냅니다.
+ * 여러 요청이 동시에 401을 받아도 갱신은 한 번만 합니다. 갱신도 안 되면(로그아웃·퇴사) 로그인 화면으로 보냅니다.
+ */
+let refreshing: Promise<boolean> | null = null;
+export function refreshSession(): Promise<boolean> {
+  refreshing ??= fetch("/api/auth/refresh", { method: "POST" })
+    .then((r) => r.ok)
+    .catch(() => false)
+    .finally(() => window.setTimeout(() => (refreshing = null), 0));
+  return refreshing;
+}
+
+export function goLogin(): void {
+  location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`;
+}
+
+/** 폰 촬영 API는 로그인 대신 QR 토큰이 권한이라 로그인 처리를 하지 않습니다. */
+const needsLogin = (url: string) => !url.startsWith("/api/capture/");
+
+export async function api<T>(method: string, url: string, body?: unknown, retried = false): Promise<T> {
   let res: Response;
   try {
     res = await fetch(url, {
@@ -156,13 +178,18 @@ export async function api<T>(method: string, url: string, body?: unknown): Promi
     throw new ApiError(FALLBACK[0]!, 0, null);
   }
   syncClock(res);
+  if (res.status === 401 && needsLogin(url)) {
+    if (!retried && (await refreshSession())) return api<T>(method, url, body, true);
+    goLogin();
+    throw new ApiError("로그인이 필요합니다.", 401, null);
+  }
   if (!res.ok) throw await toApiError(res);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
 /** 파일 업로드 (진행률이 필요해서 XHR). 성공하면 JSON 본문을 돌려줍니다. */
-export function upload<T>(url: string, form: FormData, onProgress?: (percent: number) => void): Promise<T> {
+export function upload<T>(url: string, form: FormData, onProgress?: (percent: number) => void, retried = false): Promise<T> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
@@ -170,6 +197,15 @@ export function upload<T>(url: string, form: FormData, onProgress?: (percent: nu
       if (e.lengthComputable) onProgress?.(Math.min(99, Math.round((e.loaded / e.total) * 100)));
     };
     xhr.onload = async () => {
+      if (xhr.status === 401 && needsLogin(url)) {
+        if (!retried && (await refreshSession())) {
+          upload<T>(url, form, onProgress, true).then(resolve, reject);
+          return;
+        }
+        goLogin();
+        reject(new ApiError("로그인이 필요합니다.", 401, null));
+        return;
+      }
       if (xhr.status >= 200 && xhr.status < 300) {
         onProgress?.(100);
         resolve(JSON.parse(xhr.responseText) as T);

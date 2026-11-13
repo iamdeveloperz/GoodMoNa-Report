@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafaf7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230e0e0e%27/%3E%3Crect x=%274%27 y=%2710%27 width=%278%27 height=%272%27 fill=%27%23d7261e%27/%3E%3C/svg%3E">
+  <title>가입 신청 — GoodMoNa</title>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="/intranet">GoodMoNa<span>인트라넷</span></a>
+    </div>
+  </header>
+  <main class="auth">
+    <p class="auth-lead" id="lead">가입 신청<small>신청하면 대표원장·관리자에게 승인 요청이 갑니다. 승인 전에는 로그인할 수 없습니다. 직무는 승인하는 사람이 확인해 정합니다.</small></p>
+    <section class="auth-card">
+      <h1 id="title">직원 가입 신청</h1>
+      <p class="notice" id="bootstrap" hidden>관리자 계정이 아직 없어, 이 계정은 승인 없이 바로 <b>대표원장·관리자</b>로 만들어집니다. 서버 PC에서만 한 번 할 수 있습니다.</p>
+      <form class="form" id="form" novalidate>
+        <label class="field"><span class="label">이름</span><input type="text" id="name" autocomplete="name" maxlength="30" required></label>
+        <label class="field"><span class="label">아이디</span><input type="text" id="loginId" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="30" required>
+          <span class="hint">영문 소문자·숫자 3~30자 (. _ - 사용 가능)</span></label>
+        <div class="row2">
+          <label class="field"><span class="label">비밀번호</span><input type="password" id="password" autocomplete="new-password" minlength="8" required></label>
+          <label class="field"><span class="label">비밀번호 확인</span><input type="password" id="password2" autocomplete="new-password" required></label>
+        </div>
+        <span class="hint">8자 이상, 아이디를 넣을 수 없습니다.</span>
+        <label class="field"><span class="label">직무</span>
+          <select id="role" required>
+            <option value="" selected disabled>고르세요</option>
+            <option value="Nurse">간호사</option>
+            <option value="Doctor">원장</option>
+            <option value="Staff">직원 (CS·코디·행정)</option>
+            <option value="Admin">관리자</option>
+            <option value="Owner">대표원장</option>
+          </select></label>
+        <div class="row2" id="extra">
+          <label class="field"><span class="label">부서 (선택)</span><input type="text" id="department" maxlength="30"></label>
+          <label class="field"><span class="label">연락처 (선택)</span><input type="tel" id="phone" maxlength="20" autocomplete="tel"></label>
+        </div>
+        <p class="err" id="err" role="alert" hidden></p>
+        <button class="btn primary big block" type="submit" id="submit">가입 신청</button>
+      </form>
+      <div class="ok-box" id="done" hidden></div>
+      <p class="meta">이미 계정이 있으면 <a href="/login">로그인</a></p>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/signup/main.ts"></script>
+</body>
+</html>

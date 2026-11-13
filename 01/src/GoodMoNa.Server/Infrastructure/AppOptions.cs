@@ -29,6 +29,19 @@ public sealed class AppOptions
     public int MaxNoteMinutes { get; set; } = 12;
 
     public WhisperOptions Whisper { get; set; } = new();
+
+    public AuthOptions Auth { get; set; } = new();
+}
+
+/// <summary>로그인은 02 인트라넷 서버가 맡습니다. 01은 02가 발급한 출입증(JWT)을 확인만 합니다.</summary>
+public sealed class AuthOptions
+{
+    /// <summary>02 서버 주소(같은 PC). 서명 공개키를 여기서 받고, localhost로 직접 열었을 때 로그인 화면도 여기로 보냅니다.</summary>
+    public string Authority { get; set; } = "http://localhost:5002";
+
+    /// <summary>02 설정과 같아야 합니다.</summary>
+    public string Issuer { get; set; } = "goodmona-intranet";
+    public string Audience { get; set; } = "goodmona";
 }
 
 public sealed class WhisperOptions
