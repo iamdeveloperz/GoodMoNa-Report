@@ -10,5 +10,6 @@ GoodMoNa 병원 경과 보고 시스템(PMS) 과제 모음입니다. 폰으로 �
 기술 스택: ASP.NET Core (.NET 10) Minimal API · SignalR · EF Core + SQLite · Whisper.net (large-v3-turbo, Vulkan GPU) · Vite + TypeScript · Cloudflare Tunnel
 
 설계 문서: [docs/architecture.md](docs/architecture.md) (서버·언어·프레임워크·데이터 모델·API·포트·배포·알려진 함정)
+1번 과제 보고서: [설계](01/docs/design-report.md) · [구현](01/docs/implementation-report.md) · [결과](01/docs/result-report.md) · [CRM 연동 방안(구현 가능안·대안)](01/docs/crm-integration.md)
 작업 안내(에이전트용): [CLAUDE.md](CLAUDE.md)
 배포: `deploy/install-all.ps1` (02 → 01 + 터널)

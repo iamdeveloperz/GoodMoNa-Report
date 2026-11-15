@@ -58,7 +58,7 @@ ASP.NET Core 서버 ── Windows 서비스 GoodMoNa01
   tests/GoodMoNa.Server.Tests/   통합 테스트 (TestApp = 임시 데이터 폴더 + 가짜 시계·STT)
   web/                      index · report · director · import · capture .html + src/<페이지>/main.ts, src/shared/*
   deploy/install.ps1 · uninstall.ps1
-  docs/crm-integration.md
+  docs/design-report.md · implementation-report.md · result-report.md · crm-integration.md
 ```
 
 ## 4. 데이터 모델
@@ -81,7 +81,7 @@ Patient (이름+생년월일 유일)
 1. **보고(간호사, `/report`)**: 환자 검색·등록 → 오늘 방문 열기(직전 사진 함께) → QR 발급 → 폰이 `/capture/{token}`에서 촬영(회전 보정·EXIF 제거·긴 변 2560px JPEG) → 서버 저장 후 SignalR `PhotoArrived` → 경과·메모로 보고 → `ReportSubmitted`가 원장 그룹으로.
 2. **결과 확인(원장, `/director`)**: 날짜별 받은 보고(새 보고는 알림음) → 전후 사진(확대 모드 · 5:5 비교 모드) → 소견 녹음(브라우저에서 16kHz 모노 WAV로 바꿔 업로드, 202) → `TranscriptionQueue` → `TranscriptionWorker`가 Whisper 변환 → `NoteUpdated` 푸시. 서버 재시작 시 대기 중 녹음 자동 재처리, 시작 시 모델 예열.
 3. **이전 기록 가져오기(`/import`, 서버 PC에서만)**: 사진을 가져오기 폴더에 올림/복사 → CSV 검사(엑셀 행 번호로 오류) → 백그라운드에서 트랜잭션 하나로 저장(실패 시 DB·복사 사진 모두 되돌림). 중복은 이름+생년월일 / 환자+날짜 / SHA-256으로 막음.
-4. **CRM 연동**: 설계만 (Outbox 패턴, `01/docs/crm-integration.md`).
+4. **CRM 연동**: 설계만. CRM 정보가 없어 구현 가능안(CRM 무관 공통 기반 / 유형별 어댑터)과 대안으로 나눔 (`01/docs/crm-integration.md`). 1번 과제의 설계·구현·결과 보고서는 `01/docs/`.
 
 ## 6. API 요약
 

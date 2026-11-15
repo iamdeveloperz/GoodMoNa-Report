@@ -122,6 +122,15 @@ cloudflared tunnel login            # 처음 한 번: 브라우저에서 hsdevs.
 
 화면과 API는 02 인트라넷의 로그인(승인된 직원만)으로 보호됩니다. 02와 함께 배포하려면 리포 맨 위의 `deploy/install-all.ps1`을 쓰세요(02 → 01 순서). 터널은 같은 주소에서 로그인 관련 경로(`/login`, `/signup`, `/intranet*`, `/api/auth/*`, `/api/admin/*`, `/.well-known/*`)를 02(localhost:5002)로, 나머지를 01로 보냅니다. 더 막고 싶으면 Cloudflare Access를 추가로 걸 수 있습니다(촬영 `/capture/*`, `/api/capture/*`는 제외).
 
+## 보고서
+
+| 문서 | 내용 |
+| --- | --- |
+| [설계 보고서](docs/design-report.md) | 요구사항 정리, 전체 흐름, 시스템 구조, **기술 선택 이유와 대안 비교**(언어·프레임워크·실시간·DB·음성 인식·화면·폰 연결·호스팅·로그인·테스트), 데이터·API·보안 설계 |
+| [구현 보고서](docs/implementation-report.md) | 개발 경과, 기능별 구현 방식, 구현 중 만난 문제와 해결, 테스트 구성 |
+| [결과 보고서](docs/result-report.md) | 요구사항 달성표, 테스트 결과, 화면 수동 확인 체크리스트, 운영 현황, 한계와 남은 과제, 회고 |
+| [CRM 연동 방안](docs/crm-integration.md) | 녹음 기록 → CRM 자동 제출. CRM 정보가 없어 **구현 가능안(CRM 무관 공통 기반 / CRM 유형별 어댑터)과 대안**으로 나눠 정리 |
+
 ## CRM 연동
 
-원장이 기록 버튼을 누르면 CRM으로 자동 전송하는 방안(Outbox 구조, CRM 종류별 연동, 방화벽·고정 IP 등 문제와 해결)은 [docs/crm-integration.md](docs/crm-integration.md)에 정리했습니다. CRM이 정해지면 어댑터 하나만 붙이면 되도록 설계했습니다.
+원장 소견(녹음 스크립트)을 CRM에 자동 제출하는 기능은 병원 CRM 정보(제품·API·인증·환자 식별 방식)가 없어 **설계까지만** 했습니다. CRM과 무관하게 지금 만들 수 있는 공통 기반(제출 대기열·상태 표시·스크립트 확인·텍스트 복사·표준 웹훅/내보내기), CRM이 정해지면 붙일 유형별 어댑터, 자동 연동이 안 될 때의 대안을 [docs/crm-integration.md](docs/crm-integration.md)에 나눠 정리했습니다.
