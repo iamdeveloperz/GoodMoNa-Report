@@ -35,7 +35,7 @@ dotnet ef migrations add <이름> --project src/<서버 프로젝트>   # dotnet
 - 실제 환자 데이터는 리포·테스트에 넣지 않습니다. 예시 사진은 SVG/캔버스로 만든 가짜.
 - 직무 이름(`Owner`·`Doctor`·`Nurse`·`Staff`·`Admin`)은 02 `Data/Entities.cs`의 StaffRole과 01 `Auth/StaffAuth.cs`의 StaffRoles가 같아야 합니다. 출입증 Issuer·Audience도 두 서버 설정이 같아야 합니다.
 - 02의 서명 개인키(`keys/signing-key.pem`)는 데이터 폴더에만 둡니다. 커밋 금지.
-- CS 안내 도우미: 검색·AI 답변의 근거는 **승인된 자료만**. AI 답변은 지금 Claude API(가린 질문 + 찾은 자료 4건 전송), 로컬 모델(Ollama)로 바꿀 수 있음. 설정·API 키는 데이터 폴더의 `appsettings.local.json`에만(배포가 덮어쓰지 않음, `02/deploy/set-claude-key.ps1`). 키를 리포·채팅에 넣지 않습니다. 예시 자료(`02/samples/cs-knowledge`)는 가상 — 실제 병원 정보·환자 정보를 넣지 않습니다.
+- CS 안내 도우미: 검색·AI 답변의 근거는 **승인된 자료만**. AI 답변은 서버 PC 로컬 모델(Ollama, 외부 전송 없음)이 운영안이고 Claude API로도 바꿀 수 있음(그때는 가린 질문 + 찾은 자료 4건 전송). Claude·Codex 구독은 서버 백엔드로 쓰지 않음(개인 사용 범위) — 초기 자료 정리에만. 설정·API 키는 데이터 폴더의 `appsettings.local.json`에만(배포가 덮어쓰지 않음, `02/deploy/set-assistant.ps1`). 키를 리포·채팅에 넣지 않습니다. 예시 자료(`02/samples/cs-knowledge`)는 가상 — 실제 병원 정보·환자 정보를 넣지 않습니다.
 - 02의 업무 API는 `/api/intranet/*` 아래에 둡니다(터널이 이 경로만 02로 보냄). 다른 접두어가 필요하면 `01/deploy/install.ps1`의 `$intranetPaths`와 `01/web/vite.config.ts` 프록시도 고칩니다.
 - 개발: 02(5012)·01(5011) 서버를 켜고 `01/web`에서 `npm run dev`(5173) — 로그인 경로가 02로 프록시돼 운영과 같은 한 주소로 동작.
 

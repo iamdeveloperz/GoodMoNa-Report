@@ -56,6 +56,7 @@ public sealed class OllamaAnswerWriter(IHttpClientFactory http, IOptions<AppOpti
                 new { role = "user", content = AnswerPrompt.User(question, passages) },
             },
             options = new { temperature = 0.1, num_ctx = 4096 },
+            keep_alive = _o.KeepAlive,
         };
         using var res = await client.PostAsJsonAsync($"{_o.OllamaUrl.TrimEnd('/')}/api/chat", body, ct);
         res.EnsureSuccessStatusCode();
@@ -65,6 +66,38 @@ public sealed class OllamaAnswerWriter(IHttpClientFactory http, IOptions<AppOpti
 }
 
 /// <summary>AI에게 주는 지시. 작은 로컬 모델도 따르기 쉽게 짧고 단정하게 씁니다.</summary>
+/// <summary>
+/// 서버가 켜질 때 Ollama 모델을 GPU에 미리 올립니다(첫 질문이 모델 적재를 기다리지 않게).
+/// 실패해도 서버는 그대로 — 첫 질문 때 다시 올리고, 그동안은 검색 결과만 나갑니다.
+/// </summary>
+public sealed class OllamaWarmup(IHttpClientFactory http, IOptions<AppOptions> options, ILogger<OllamaWarmup> log) : BackgroundService
+{
+    public const string HttpClientName = "ollama-warmup";
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var o = options.Value.Assistant;
+        // 서버 PC를 막 켰을 때는 Ollama(사용자 로그인 시 실행)가 늦게 뜰 수 있어 몇 번 다시 시도합니다.
+        for (var attempt = 1; attempt <= 5 && !stoppingToken.IsCancellationRequested; attempt++)
+        {
+            try
+            {
+                // prompt 없이 보내면 모델만 올리고 끝납니다.
+                using var res = await http.CreateClient(HttpClientName).PostAsJsonAsync(
+                    $"{o.OllamaUrl.TrimEnd('/')}/api/generate", new { model = o.Model, keep_alive = o.KeepAlive }, stoppingToken);
+                res.EnsureSuccessStatusCode();
+                log.LogInformation("Ollama 모델을 미리 올렸습니다: {Model}", o.Model);
+                return;
+            }
+            catch (Exception e) when (!stoppingToken.IsCancellationRequested)
+            {
+                log.LogWarning("Ollama 모델 미리 올리기 실패({Attempt}/5): {Message}", attempt, e.Message);
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken).ContinueWith(_ => { });
+            }
+        }
+    }
+}
+
 public static class AnswerPrompt
 {
     public const string NotFound = "자료에 없음";

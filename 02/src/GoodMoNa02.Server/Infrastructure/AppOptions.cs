@@ -33,10 +33,16 @@ public sealed class AssistantOptions
     /// <summary>답변을 기다리는 최대 시간. 넘기면 검색 결과만 보여 줌</summary>
     public int TimeoutSeconds { get; set; } = 60;
 
+    /// <summary>
+    /// Ollama 모델을 GPU에 올려 둘 시간(Ollama keep_alive). 음수(-1m)면 계속 올려 둠 — 기본.
+    /// Ollama 기본(5분)으로 두면 한동안 질문이 없다가 온 첫 질문이 모델을 다시 올리느라 제한 시간을 넘길 수 있습니다.
+    /// </summary>
+    public string KeepAlive { get; set; } = "-1m";
+
     /// <summary>AI에게 넘길 근거 자료 수 (작은 모델은 적을수록 정확)</summary>
     public int MaxPassages { get; set; } = 4;
 
-    /// <summary>Claude API 키. 리포·설치 폴더에 두지 말고 데이터 폴더의 appsettings.local.json에만 (deploy/set-claude-key.ps1)</summary>
+    /// <summary>Claude API 키. 리포·설치 폴더에 두지 말고 데이터 폴더의 appsettings.local.json에만 (deploy/set-assistant.ps1 -Mode Claude)</summary>
     public string? ApiKey { get; set; }
 
     public bool ClaudeEnabled => Mode.Equals("Claude", StringComparison.OrdinalIgnoreCase);

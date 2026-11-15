@@ -32,7 +32,7 @@
 - [ ] 품의·결재 (연차 승인 흐름을 일반화)
 - [ ] 사내 메신저 (1:1·부서방, SignalR)
 - [x] LLM 위키로 CS 응대 = **CS 안내 도우미** (프로토타입): 자료 추출 → 초안 → 승인 → 검색, 못 찾은 질문 → FAQ(학습 고리), 출처 검사 AI 답변 연결부
-- [x] CS 도우미 AI 답변: 우선 Claude API로 (`deploy/set-claude-key.ps1`)
+- [x] CS 도우미 AI 답변: 서버 PC 로컬 모델(Ollama `qwen3:4b-instruct`) — `deploy/set-assistant.ps1`로 로컬·Claude API·끄기 전환
 - [ ] 평가 묶음으로 답 품질·비용 측정, 로컬 모델(Ollama)로 옮길지 결정, 영상 대본 바로 가져오기(Whisper)
 - [ ] 홈 화면 설치(PWA)·웹 푸시 알림
 
@@ -150,7 +150,7 @@ tests/GoodMoNa02.Server.Tests   통합 테스트 72개: 로그인(16) · 연차 
 web/                      login · signup · intranet · notices · leave · attendance · kiosk · parking · people · ask · knowledge · intranet-admin · settings
                           (정적 파일은 /intranet-assets/ — 01의 /assets/와 겹치지 않게. 메뉴는 src/shared/chrome.ts 한 곳)
 deploy/install.ps1        서비스 GoodMoNa02 (localhost:5002)
-deploy/set-claude-key.ps1 CS 도우미 AI를 Claude API로 켜기·끄기 (키는 관리자 창에서 입력, 데이터 폴더에만 저장)
+deploy/set-assistant.ps1  CS 도우미 AI 답변 전환: -Mode Ollama -Model … / Claude(키는 관리자 창에서 입력) / Off
 docs/                     intranet-design(인트라넷 기능) · cs-assistant-design(CS 안내 도우미)
 samples/cs-knowledge/     CS 도우미 가상 예시 자료 (원문 대본 → AI 정리본, 안내 문서, FAQ)
 ```
@@ -178,5 +178,5 @@ dotnet test
 | --- | --- |
 | 서비스 | `GoodMoNa02` (localhost:5002) |
 | 설치 · 데이터 | `C:\GoodMoNa\02\app` · `C:\GoodMoNa\02\data` (SQLite + 서명 키) |
-| 운영 설정 | 데이터 폴더의 `appsettings.local.json` (배포가 덮어쓰지 않음). CS 도우미 AI를 Claude로 켜기: `deploy\set-claude-key.ps1`(관리자 창에서 키 입력, 끄기 `-Off`). 로컬 모델은 `{"App":{"Assistant":{"Mode":"Ollama","Model":"<모델>"}}}` — [설계 §7](docs/cs-assistant-design.md#7-ai-답변-3단계-기본-꺼짐) |
+| 운영 설정 | 데이터 폴더의 `appsettings.local.json` (배포가 덮어쓰지 않음). CS 도우미 AI 전환: `deploy\set-assistant.ps1 -Mode Ollama -Model qwen3:4b-instruct` (또는 `-Mode Claude` / `-Mode Off`, UAC 필요) — [설계 §7](docs/cs-assistant-design.md#7-ai-답변-3단계-운영-로컬-모델) |
 | 외부 경로 | Cloudflare 터널(01 설치 스크립트가 설정)이 `/login`, `/signup`, `/intranet*`, `/api/auth/*`, `/api/admin/*`, `/api/intranet/*`, `/.well-known/*`를 02로 보냄 |

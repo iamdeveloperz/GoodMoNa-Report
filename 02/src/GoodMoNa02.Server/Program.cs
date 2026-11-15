@@ -37,6 +37,10 @@ builder.Services.AddSingleton<IPasswordHasher<Staff>, PasswordHasher<Staff>>();
 builder.Services.AddSingleton<KbIndex>();
 builder.Services.AddHttpClient(OllamaAnswerWriter.HttpClientName, (sp, c) =>
     c.Timeout = TimeSpan.FromSeconds(Math.Max(5, sp.GetRequiredService<IOptions<AppOptions>>().Value.Assistant.TimeoutSeconds)));
+builder.Services.AddHttpClient(OllamaWarmup.HttpClientName, c => c.Timeout = TimeSpan.FromMinutes(5)); // 처음 디스크에서 읽을 때는 1분 넘게 걸림
+if (builder.Configuration.GetSection(AppOptions.Section).Get<AppOptions>()?.Assistant is { OllamaEnabled: true }
+    && !builder.Environment.IsEnvironment("Testing"))
+    builder.Services.AddHostedService<OllamaWarmup>();
 builder.Services.AddSingleton<IAnswerWriter>(sp =>
 {
     var assistant = sp.GetRequiredService<IOptions<AppOptions>>().Value.Assistant;
