@@ -12,6 +12,18 @@ public sealed class AppOptions
     public AuthOptions Auth { get; set; } = new();
 
     public AssistantOptions Assistant { get; set; } = new();
+
+    public KnowledgeOptions Knowledge { get; set; } = new();
+}
+
+/// <summary>CS 자료 자동 정리 (정정 → FAQ 초안, 못 찾은 질문 → 표현 추가 제안, 병원 홈페이지 변경 확인)</summary>
+public sealed class KnowledgeOptions
+{
+    /// <summary>매일 자동 정리를 돌릴 시각 (병원 시간, 0~23시)</summary>
+    public int CurateHour { get; set; } = 3;
+
+    /// <summary>끄면 "지금 정리하기"로만 돌림</summary>
+    public bool AutoCurate { get; set; } = true;
 }
 
 /// <summary>

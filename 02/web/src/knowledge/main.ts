@@ -5,16 +5,17 @@ import { setupMasthead } from "../shared/chrome";
 import { byId, esc, fmtDate, fmtHM, formValues, toast } from "../shared/format";
 import {
   KB_KIND, KB_SOURCE, KB_STATUS,
-  type AskLog, type KbImport, type KbImportPreview, type KbItem, type KbKind, type KbOverview,
+  type AskLog, type KbCurateResult, type KbImport, type KbImportPreview, type KbItem, type KbKind, type KbOverview, type KbSuggestion, type KbWatchPage,
 } from "../shared/types";
 
 /**
- * 자료 관리 (대표원장·관리자): 처리할 질문 → FAQ, 승인 대기 → 승인·반려·고치기, 자료 가져오기(미리 보기 → 초안),
- * 승인된 자료(재검토일·내리기), 내린·반려 자료(다시 승인·지우기), 가져오기 기록.
+ * 자료 관리 (대표원장·관리자): 자동 정리 제안(표현 추가·홈페이지 변경) → 반영, 처리할 질문 → FAQ, 승인 대기 → 승인·반려·고치기,
+ * 자료 가져오기(미리 보기 → 초안), 승인된 자료(재검토일·내리기), 내린·반려 자료(다시 승인·지우기), 병원 홈페이지 확인, 가져오기 기록.
  */
 
 let items: KbItem[] = [];
 let questions: AskLog[] = [];
+let suggestions: KbSuggestion[] = [];
 /** 편집기: 기존 자료 고치기 / 질문에서 FAQ 만들기 / 새 자료 */
 let editing: { item?: KbItem; question?: AskLog } | null = null;
 let rejecting: number | null = null;
@@ -92,12 +93,52 @@ function renderOthers(): void {
     : `<ul class="list">${list.map((i) => itemRow(i, `<span class="tag muted">${KB_STATUS[i.status]}</span><button class="textbtn" type="button" data-act="approve" data-id="${i.id}">다시 승인</button><button class="textbtn danger" type="button" data-act="delete" data-id="${i.id}">지우기</button>`)).join("")}</ul>`;
 }
 
+function runText(r: KbCurateResult): string {
+  const parts = [`정정 초안 ${r.drafts}`, `표현 제안 ${r.keywordSuggestions}`, `홈페이지 ${r.pagesChecked}쪽 확인 · 변경 ${r.siteChanges}`];
+  return `${fmtDate(r.at)} ${fmtHM(r.at)} · ${parts.join(" · ")}${r.errors.length ? ` · 오류 ${r.errors.length}` : ""}`;
+}
+
+function renderSuggestions(): void {
+  byId("suggestions").innerHTML = suggestions.length === 0
+    ? '<p class="empty">반영할 제안이 없습니다.</p>'
+    : `<ul class="list">${suggestions.map((s) => {
+      const item = s.itemTitle ? `<details class="hit"><summary class="meta">지금 자료: ${esc(s.itemTitle)}</summary><div class="prose">${esc(s.itemBody ?? "")}</div></details>` : "";
+      if (s.kind === "Keywords")
+        return `<li class="kb-row"><span class="grow"><b>${esc(s.title)}</b><br><span class="meta">${esc(s.detail)}</span>
+          <span class="phrases">${s.phrases.map((ph) => `<span class="tag muted">${esc(ph)}</span>`).join(" ")}</span>${item}</span>
+          <div class="acts"><button class="btn primary compact" type="button" data-act="accept" data-id="${s.id}">반영</button><button class="textbtn" type="button" data-act="dismiss-suggestion" data-id="${s.id}">닫기</button></div></li>`;
+      return `<li class="kb-row"><span class="grow"><b>${esc(s.title)}</b>${s.sourceUrl ? `<br><a class="meta" href="${esc(s.sourceUrl)}" target="_blank" rel="noopener">${esc(s.sourceUrl)}</a>` : ""}
+        <pre class="code diff">${esc(s.detail)}</pre>${item}
+        ${s.proposedBody ? `<label class="field"><span class="label">AI가 고친 안 (반영 전에 손볼 수 있음)</span><textarea rows="6" maxlength="4000" data-proposed="${s.id}">${esc(s.proposedBody)}</textarea></label>`
+          : `<p class="meta">${s.itemId ? "고칠 본문은 직접 쓰세요." : "관련 자료를 찾지 못했습니다. 필요하면 새 자료를 쓰세요."}</p>`}</span>
+        <div class="acts">${s.proposedBody ? `<button class="btn primary compact" type="button" data-act="accept" data-id="${s.id}">고친 안으로 반영</button>`
+          : s.itemId ? `<button class="btn compact" type="button" data-act="edit" data-id="${s.itemId}">자료 고치기</button>` : `<button class="btn compact" type="button" data-act="new">새 자료 쓰기</button>`}
+          <button class="textbtn" type="button" data-act="dismiss-suggestion" data-id="${s.id}">확인함 · 닫기</button></div></li>`;
+    }).join("")}</ul>`;
+}
+
+function renderWatch(pages: KbWatchPage[]): void {
+  byId("watch").innerHTML = pages.length === 0
+    ? '<p class="empty">등록한 주소가 없습니다. 병원 홈페이지의 진료 시간·오시는 길·시술 안내 주소를 넣어 두세요.</p>'
+    : `<ul class="list">${pages.map((w) => `<li><span class="grow"><a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.url)}</a><br>
+        <span class="meta">${w.lastCheckedAt ? `마지막 확인 ${fmtDate(w.lastCheckedAt)} ${fmtHM(w.lastCheckedAt)} · ${w.lines}줄` : "아직 확인 전 (다음 정리 때 지금 내용을 기준으로 저장)"}${w.lastChangedAt ? ` · 바뀐 날 ${fmtDate(w.lastChangedAt)}` : ""}</span>
+        ${w.lastError ? `<br><span class="meta warn-text">${esc(w.lastError)}</span>` : ""}</span>
+        <button class="textbtn danger" type="button" data-act="unwatch" data-id="${w.id}">빼기</button></li>`).join("")}</ul>`;
+}
+
+function questionState(q: AskLog): string {
+  const near = q.topItemTitle ? ` (${q.found ? "가장 가까운" : "조금 겹친"} 자료: ${esc(q.topItemTitle)})` : "";
+  if (q.aiDeclined) return `AI가 "자료에 답 없음"으로 판단${near}`;
+  return q.found ? `찾았지만 "부족함"${near}` : `못 찾음${near}`;
+}
+
 /** "표현 추가"는 가장 가까운 자료가 어느 정도(30%) 겹칠 때만 권함. 그 아래는 엉뚱한 자료일 가능성이 큼 */
 function renderQuestions(): void {
   byId("questions").innerHTML = questions.length === 0
     ? '<p class="empty">처리할 질문이 없습니다.</p>'
     : `<ul class="list">${questions.map((q) => `<li><span class="grow"><b>${esc(q.question)}</b><br>
-        <span class="meta">${esc(q.staffName)} · ${fmtDate(q.createdAt)} ${fmtHM(q.createdAt)} · ${q.found ? `찾았지만 "부족함"${q.topItemTitle ? ` (가장 가까운 자료: ${esc(q.topItemTitle)})` : ""}` : `못 찾음${q.topItemTitle ? ` (조금 겹친 자료: ${esc(q.topItemTitle)})` : ""}`}</span></span>
+        <span class="meta">${esc(q.staffName)} · ${fmtDate(q.createdAt)} ${fmtHM(q.createdAt)} · ${questionState(q)}</span>
+        ${q.correction ? `<br><span class="meta">직원 정정: ${esc(q.correction)}</span>${q.draftItemId ? ' <span class="tag accent">FAQ 초안 → 승인 대기</span>' : ' <span class="tag muted">곧 FAQ 초안이 만들어짐</span>'}` : ""}</span>
         <div class="acts">${q.topItemId && q.topItemTitle && q.topCoverage >= 0.3 && q.question.length <= 60 ? `<button class="btn compact" type="button" data-act="attach" data-id="${q.id}" data-item="${q.topItemId}" title="이 질문 표현을 그 자료의 검색 보조어로 붙여 다음엔 찾게 합니다">「${esc(q.topItemTitle.length > 18 ? `${q.topItemTitle.slice(0, 18)}…` : q.topItemTitle)}」에 표현 추가</button>` : ""}<button class="btn compact" type="button" data-act="from-question" data-id="${q.id}">FAQ로 만들기</button><button class="textbtn" type="button" data-act="dismiss" data-id="${q.id}">닫기</button></div></li>`).join("")}</ul>`;
 }
 
@@ -112,13 +153,13 @@ function renderEditor(): void {
   const kind: KbKind = i?.kind ?? "Faq";
   const heading = i ? "자료 고치기" : q ? "질문으로 FAQ 만들기" : "새 자료";
   box.innerHTML = `<form class="card" id="itemForm">
-    <h2>${heading}</h2>${q ? `<p class="meta">${esc(q.staffName)}님의 질문: "${esc(q.question)}" — 다듬어서 질문으로 쓰세요. 저장하면 이 질문은 처리됨으로 바뀝니다.</p>` : ""}
+    <h2>${heading}</h2>${q ? `<p class="meta">${esc(q.staffName)}님의 질문: "${esc(q.question)}" — 다듬어서 질문으로 쓰세요. 저장하면 이 질문은 처리됨으로 바뀝니다.${q.correction ? " 답 칸에는 직원 정정을 넣어 두었습니다." : ""}</p>` : ""}
     <div class="form-grid">
       <label class="field"><span class="label">종류</span><select name="kind"><option value="Faq"${kind === "Faq" ? " selected" : ""}>FAQ</option><option value="Doc"${kind === "Doc" ? " selected" : ""}>문서</option></select></label>
       <label class="field"><span class="label">분류</span><input type="text" name="category" maxlength="20" value="${esc(i?.category ?? "")}" placeholder="일반"></label>
       <label class="field"><span class="label">재검토일 (가격·이벤트 등)</span><input type="date" name="reviewBy" value="${esc(i?.reviewBy ?? "")}"></label>
       <label class="field wide"><span class="label">질문 · 제목</span><input type="text" name="title" maxlength="200" required value="${esc(i?.title ?? q?.question ?? "")}"></label>
-      <label class="field wide"><span class="label">답 · 본문</span><textarea name="body" rows="6" maxlength="4000" required>${esc(i?.body ?? "")}</textarea></label>
+      <label class="field wide"><span class="label">답 · 본문</span><textarea name="body" rows="6" maxlength="4000" required>${esc(i?.body ?? q?.correction ?? "")}</textarea></label>
       <label class="field wide"><span class="label">검색 보조어 (고객이 다르게 말하는 표현, 쉼표로)</span><input type="text" name="keywords" maxlength="200" value="${esc(i?.keywords ?? "")}"></label>
     </div>
     ${i?.status === "Published" ? '<p class="meta">승인된 자료를 고치면 고친 사람이 다시 승인한 것으로 기록됩니다.</p>' : `<label class="check"><input type="checkbox" name="publish" checked> 저장하면서 바로 승인</label>`}
@@ -129,16 +170,22 @@ function renderEditor(): void {
 }
 
 async function load(): Promise<void> {
-  const [overview, list, open, imports] = await Promise.all([
+  const [overview, list, open, imports, suggested, watch] = await Promise.all([
     api<KbOverview>("GET", "/api/intranet/kb/overview"),
     api<KbItem[]>("GET", "/api/intranet/kb/items"),
     api<AskLog[]>("GET", "/api/intranet/kb/questions"),
     api<KbImport[]>("GET", "/api/intranet/kb/imports"),
+    api<KbSuggestion[]>("GET", "/api/intranet/kb/suggestions"),
+    api<KbWatchPage[]>("GET", "/api/intranet/kb/watch"),
   ]);
   items = list;
   questions = open;
+  suggestions = suggested;
+  byId("lastRun").textContent = overview.lastRun ? `마지막 정리 ${runText(overview.lastRun)}` : "매일 새벽 자동 정리";
+  renderSuggestions();
+  renderWatch(watch);
   const stat = (n: number, label: string, warn = false) => `<div class="stat"><b${warn && n ? ' class="warn-text"' : ""}>${n}<small>건</small></b><span>${label}</span></div>`;
-  byId("stats").innerHTML = stat(overview.openQuestions, "처리할 질문", true) + stat(overview.drafts, "승인 대기", true) + stat(overview.published, "승인된 자료")
+  byId("stats").innerHTML = stat(overview.suggestions, "자동 정리 제안", true) + stat(overview.openQuestions, "처리할 질문", true) + stat(overview.drafts, "승인 대기", true) + stat(overview.published, "승인된 자료")
     + stat(overview.stale, "재검토일 지남", true)
     + `<div class="stat"><b class="small-b">${overview.assistant.enabled ? "켜짐" : "꺼짐"}</b><span>AI 답변${overview.assistant.model ? ` · ${esc(overview.assistant.model)}` : " · 검색만"}</span></div>`;
   byId("imports").innerHTML = imports.length === 0
@@ -176,6 +223,11 @@ document.addEventListener("submit", async (e) => {
       toast(`초안 ${r.items.length}건을 만들었습니다. 승인 대기에서 확인해 주세요.`);
       await load();
       byId("drafts").scrollIntoView({ block: "start" });
+    } else if (form.id === "watchForm") {
+      await api("POST", "/api/intranet/kb/watch", { url: formValues(form).url });
+      form.reset();
+      toast("등록했습니다. 다음 정리 때 지금 내용을 기준으로 저장합니다.");
+      await load();
     } else if (form.id === "itemForm" && editing) {
       const v = formValues(form);
       const body = { kind: v.kind, title: v.title, body: v.body, category: v.category, keywords: v.keywords, reviewBy: v.reviewBy || null, publish: v.publish === "on" };
@@ -225,6 +277,17 @@ document.addEventListener("click", async (e) => {
       box.hidden = !box.hidden;
     } else if (el.id === "copyPrompt") {
       await navigator.clipboard.writeText(byId("promptText").textContent ?? "").then(() => toast("복사했습니다"), () => toast("직접 선택해 복사해 주세요."));
+    } else if (el.id === "curateBtn") {
+      el.setAttribute("disabled", "");
+      el.textContent = "정리 중…";
+      try {
+        const r = await api<KbCurateResult>("POST", "/api/intranet/kb/curate");
+        toast(`정리했습니다 · ${runText(r)}`);
+        await load();
+      } finally {
+        el.removeAttribute("disabled");
+        el.textContent = "지금 정리하기";
+      }
     } else if (el.id === "approveSelected") {
       const r = await api<{ approved: number }>("POST", "/api/intranet/kb/approve", { ids: [...selected] });
       selected.clear();
@@ -281,6 +344,21 @@ document.addEventListener("click", async (e) => {
         break;
       case "dismiss":
         await api("POST", `/api/intranet/kb/questions/${id}/dismiss`);
+        await load();
+        break;
+      case "accept": {
+        const proposed = document.querySelector<HTMLTextAreaElement>(`textarea[data-proposed="${id}"]`);
+        const r = await api<{ message: string }>("POST", `/api/intranet/kb/suggestions/${id}/accept`, proposed ? { body: proposed.value } : {});
+        toast(r.message);
+        await load();
+        break;
+      }
+      case "dismiss-suggestion":
+        await api("POST", `/api/intranet/kb/suggestions/${id}/dismiss`);
+        await load();
+        break;
+      case "unwatch":
+        await api("DELETE", `/api/intranet/kb/watch/${id}`);
         await load();
         break;
       case "cancel-edit":

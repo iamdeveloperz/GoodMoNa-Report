@@ -14,10 +14,14 @@ public static partial class KbText
     private static readonly HashSet<string> QueryNoise =
     [
         "나요", "가요", "까요", "어요", "해요", "세요", "니까", "습니", "합니", "는지", "인가", "되나", "있나", "을까", "할까", "데요",
-        "건가", "던가", "려면", "으면", "하면", "알려", "려줘", "주세", "줘요", "뭐야", "언제", "어디", "어떻", "떻게", "얼마", "몇시", "예요", "이에",
+        "건가", "던가", "려면", "으면", "하면", "알려", "려줘", "주세", "줘요", "뭐야", "언제", "어디", "어떻", "떻게", "얼마", "몇시", "예요", "이에", "몇", "돼요", "되요",
     ];
 
-    /// <summary>글을 소문자·글자/숫자 낱말로 나눈 뒤 2-gram 목록으로 (한 글자 낱말은 그대로)</summary>
+    /// <summary>
+    /// 글을 소문자·글자/숫자 낱말로 나눈 뒤 2-gram 목록으로 (한 글자 낱말은 그대로).
+    /// "2주차·1일차·5개월차·3회차"처럼 숫자 + 차례를 뜻하는 말은 한 덩어리로 둡니다.
+    /// 그렇지 않으면 "수술 2주차"의 "주차"가 주차장 질문에 걸립니다.
+    /// </summary>
     public static List<string> Tokens(string? text)
     {
         var tokens = new List<string>();
@@ -30,12 +34,28 @@ public static partial class KbText
                 word.Append(ch);
                 continue;
             }
-            if (word.Length == 1) tokens.Add(word.ToString());
-            for (var i = 0; i + 1 < word.Length; i++) tokens.Add(word.ToString(i, 2));
+            AddWord(tokens, word.ToString());
             word.Clear();
         }
         return tokens;
     }
+
+    private static void AddWord(List<string> tokens, string word)
+    {
+        if (word.Length == 0) return;
+        var ordinal = Ordinal().Match(word);
+        if (ordinal.Success)
+        {
+            tokens.Add(ordinal.Groups[1].Value); // "2주차" 통째로
+            word = ordinal.Groups[2].Value;      // 뒤에 붙은 말("2주차에" → "에")은 따로
+            if (word.Length < 2) return;
+        }
+        if (word.Length == 1) tokens.Add(word);
+        for (var i = 0; i + 1 < word.Length; i++) tokens.Add(word.Substring(i, 2));
+    }
+
+    [GeneratedRegex(@"^(\d+(?:개월차|주차|일차|년차|회차|차))(.*)$")]
+    private static partial Regex Ordinal();
 
     /// <summary>질문의 검색 조각 (중복·질문 끝말 제외). 다 빠지면 원래 조각을 씁니다.</summary>
     public static List<string> QueryTokens(string question)

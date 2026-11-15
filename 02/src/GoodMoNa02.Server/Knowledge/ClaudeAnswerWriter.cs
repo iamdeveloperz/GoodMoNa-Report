@@ -29,7 +29,7 @@ public sealed class ClaudeAnswerWriter : IAnswerWriter
 
     public AssistantStatusDto Status => new(true, "Claude", Model);
 
-    public async Task<string> WriteAsync(string question, IReadOnlyList<Passage> passages, CancellationToken ct)
+    public async Task<string> CompleteAsync(string system, string user, CancellationToken ct)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Max(5, _o.TimeoutSeconds)));
@@ -38,13 +38,13 @@ public sealed class ClaudeAnswerWriter : IAnswerWriter
         {
             Model = Model,
             MaxTokens = 2048,
-            System = AnswerPrompt.System,
+            System = system,
             // 짧은 Q&A라 깊게 생각할 필요가 없음 (Opus 5.5 기본은 medium)
             OutputConfig = new BetaOutputConfig { Effort = Effort.Low },
             // 안전 분류기가 거절하면 서버가 알맞은 모델로 다시 답함
             Betas = [AnthropicBeta.ServerSideFallback2026_07_01],
             Fallbacks = new Default(),
-            Messages = [new BetaUserMessageParam { Content = AnswerPrompt.User(question, passages) }],
+            Messages = [new BetaUserMessageParam { Content = user }],
         }, timeout.Token);
 
         if (response.StopReason == "refusal") throw new InvalidOperationException("AI가 이 질문에 답하지 않았습니다.");

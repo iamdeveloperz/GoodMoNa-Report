@@ -20,9 +20,12 @@
     <div class="row-between"><h1 class="page-title">자료 관리</h1><a class="textbtn" href="/intranet/ask">CS 도우미로</a></div>
     <div class="stats" id="stats"></div>
     <div id="editor"></div>
-    <section class="block" id="questionsBox"><div class="section-head"><span class="index">01</span><h2>처리할 질문</h2><span class="grow"></span><span class="meta">답을 못 찾았거나 "부족함"을 누른 질문 → FAQ로 만들면 다음부터 찾습니다</span></div><div id="questions"></div></section>
-    <section class="block"><div class="section-head"><span class="index">02</span><h2>승인 대기</h2><span class="grow"></span><span class="meta">승인해야 검색·AI 답변의 근거가 됩니다</span></div><div id="drafts"></div></section>
-    <section class="block"><div class="section-head"><span class="index">03</span><h2>자료 가져오기</h2><span class="grow"></span><span class="meta">문서·FAQ·영상 대본을 붙여넣으면 규칙대로 잘라 초안으로 만듭니다</span></div>
+    <section class="block"><div class="section-head"><span class="index">01</span><h2>자동 정리 제안</h2><span class="grow"></span><span class="meta" id="lastRun"></span><button class="btn compact" type="button" id="curateBtn">지금 정리하기</button></div>
+      <p class="meta">매일 새벽 AI가 못 찾은 질문·직원 정정·병원 홈페이지 변경을 살펴 제안을 만들어 둡니다. 반영해야 자료가 바뀝니다.</p>
+      <div id="suggestions"></div></section>
+    <section class="block" id="questionsBox"><div class="section-head"><span class="index">02</span><h2>처리할 질문</h2><span class="grow"></span><span class="meta">답을 못 찾았거나 "부족함"을 누른 질문 → FAQ로 만들면 다음부터 찾습니다</span></div><div id="questions"></div></section>
+    <section class="block"><div class="section-head"><span class="index">03</span><h2>승인 대기</h2><span class="grow"></span><span class="meta">승인해야 검색·AI 답변의 근거가 됩니다</span></div><div id="drafts"></div></section>
+    <section class="block"><div class="section-head"><span class="index">04</span><h2>자료 가져오기</h2><span class="grow"></span><span class="meta">문서·FAQ·영상 대본을 붙여넣으면 규칙대로 잘라 초안으로 만듭니다</span></div>
       <form id="importForm" class="form-grid">
         <label class="field"><span class="label">정리한 방법</span><select name="origin"><option>직접</option><option>Claude</option><option>Codex</option><option>기타 AI</option></select></label>
         <label class="field"><span class="label">원본 이름</span><input type="text" name="name" maxlength="100" placeholder="진료안내.md"></label>
@@ -35,9 +38,12 @@
       <div id="format" hidden></div>
       <div id="preview"></div>
     </section>
-    <section class="block"><div class="section-head"><span class="index">04</span><h2>승인된 자료</h2><span class="grow"></span><input type="search" id="filter" placeholder="거르기" aria-label="자료 거르기"></div><div id="published"></div></section>
-    <section class="block"><div class="section-head"><span class="index">05</span><h2>내린 · 반려한 자료</h2><span class="grow"></span></div><div id="others"></div></section>
-    <section class="block"><div class="section-head"><span class="index">06</span><h2>가져오기 기록</h2><span class="grow"></span></div><div id="imports"></div></section>
+    <section class="block"><div class="section-head"><span class="index">05</span><h2>승인된 자료</h2><span class="grow"></span><input type="search" id="filter" placeholder="거르기" aria-label="자료 거르기"></div><div id="published"></div></section>
+    <section class="block"><div class="section-head"><span class="index">06</span><h2>내린 · 반려한 자료</h2><span class="grow"></span></div><div id="others"></div></section>
+    <section class="block"><div class="section-head"><span class="index">07</span><h2>병원 홈페이지 확인</h2><span class="grow"></span><span class="meta">매일 다시 읽어 바뀐 내용이 있으면 자료 고치기 제안을 만듭니다</span></div>
+      <form id="watchForm" class="inline"><input type="url" name="url" maxlength="300" required placeholder="https://www.example.co.kr/info" aria-label="홈페이지 주소"><button class="btn compact" type="submit">주소 추가</button></form>
+      <div id="watch"></div></section>
+    <section class="block"><div class="section-head"><span class="index">08</span><h2>가져오기 기록</h2><span class="grow"></span></div><div id="imports"></div></section>
   </main>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <script type="module" src="/src/knowledge/main.ts"></script>

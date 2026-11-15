@@ -81,6 +81,14 @@ select { background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50
 .kb-row .acts input { width: 12em; padding: 4px 0; font-size: var(--t-small); }
 .code { font-family: ui-monospace, Consolas, monospace; font-size: var(--t-small); white-space: pre-wrap; background: var(--sheet); border: 1px solid var(--rule); padding: var(--s3); overflow-x: auto; }
 .stat .warn-text { color: var(--accent); }
+/* 자동 정리 제안 · 정정 · 홈페이지 확인 */
+.diff { max-height: 16em; margin: var(--s2) 0; }
+.phrases { display: flex; flex-wrap: wrap; gap: var(--s1); margin-top: var(--s2); }
+.correction { display: flex; flex-direction: column; gap: var(--s3); }
+.correction textarea { width: 100%; }
+.knowledge .warn-text { color: var(--accent); }
+#watchForm { margin-bottom: var(--s3); }
+#watchForm input { flex: 1; min-width: 14em; }
 .stat b.small-b { font-size: var(--t-h3); }
 .people td.clip { color: var(--ink-2); max-width: 40ch; }
 

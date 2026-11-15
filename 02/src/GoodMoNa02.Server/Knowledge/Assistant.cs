@@ -20,14 +20,18 @@ public interface IAnswerWriter
     AssistantStatusDto Status { get; }
 
     /// <summary>답변 원문. 자료에 없으면 "자료에 없음"을 돌려주도록 지시합니다. 실패하면 예외.</summary>
-    Task<string> WriteAsync(string question, IReadOnlyList<Passage> passages, CancellationToken ct);
+    Task<string> WriteAsync(string question, IReadOnlyList<Passage> passages, CancellationToken ct) =>
+        CompleteAsync(AnswerPrompt.System, AnswerPrompt.User(question, passages), ct);
+
+    /// <summary>지시(system)와 글(user)을 주고 답을 받습니다. 자동 정리(정정 다듬기·자료 고르기·홈페이지 변경 반영)에도 씁니다.</summary>
+    Task<string> CompleteAsync(string system, string user, CancellationToken ct);
 }
 
 public sealed class NoAnswerWriter : IAnswerWriter
 {
     public AssistantStatusDto Status { get; } = new(false, "Off", null);
 
-    public Task<string> WriteAsync(string question, IReadOnlyList<Passage> passages, CancellationToken ct) =>
+    public Task<string> CompleteAsync(string system, string user, CancellationToken ct) =>
         throw new InvalidOperationException("AI 답변이 꺼져 있습니다.");
 }
 
@@ -43,7 +47,7 @@ public sealed class OllamaAnswerWriter(IHttpClientFactory http, IOptions<AppOpti
 
     public AssistantStatusDto Status => new(true, "Ollama", _o.Model);
 
-    public async Task<string> WriteAsync(string question, IReadOnlyList<Passage> passages, CancellationToken ct)
+    public async Task<string> CompleteAsync(string system, string user, CancellationToken ct)
     {
         var client = http.CreateClient(HttpClientName);
         var body = new
@@ -52,8 +56,8 @@ public sealed class OllamaAnswerWriter(IHttpClientFactory http, IOptions<AppOpti
             stream = false,
             messages = new object[]
             {
-                new { role = "system", content = AnswerPrompt.System },
-                new { role = "user", content = AnswerPrompt.User(question, passages) },
+                new { role = "system", content = system },
+                new { role = "user", content = user },
             },
             options = new { temperature = 0.1, num_ctx = 4096 },
             keep_alive = _o.KeepAlive,
@@ -65,7 +69,6 @@ public sealed class OllamaAnswerWriter(IHttpClientFactory http, IOptions<AppOpti
     }
 }
 
-/// <summary>AI에게 주는 지시. 작은 로컬 모델도 따르기 쉽게 짧고 단정하게 씁니다.</summary>
 /// <summary>
 /// 서버가 켜질 때 Ollama 모델을 GPU에 미리 올립니다(첫 질문이 모델 적재를 기다리지 않게).
 /// 실패해도 서버는 그대로 — 첫 질문 때 다시 올리고, 그동안은 검색 결과만 나갑니다.
@@ -98,6 +101,7 @@ public sealed class OllamaWarmup(IHttpClientFactory http, IOptions<AppOptions> o
     }
 }
 
+/// <summary>AI에게 주는 지시. 작은 로컬 모델도 따르기 쉽게 짧고 단정하게 씁니다.</summary>
 public static class AnswerPrompt
 {
     public const string NotFound = "자료에 없음";

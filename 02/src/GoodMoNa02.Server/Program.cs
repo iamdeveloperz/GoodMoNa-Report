@@ -41,6 +41,16 @@ builder.Services.AddHttpClient(OllamaWarmup.HttpClientName, c => c.Timeout = Tim
 if (builder.Configuration.GetSection(AppOptions.Section).Get<AppOptions>()?.Assistant is { OllamaEnabled: true }
     && !builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddHostedService<OllamaWarmup>();
+builder.Services.AddSingleton<KbCurator>();
+builder.Services.AddHttpClient(KbCurator.HttpClientName, c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(30);
+    c.MaxResponseContentBufferSize = 8 * 1024 * 1024;
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("GoodMoNa-Intranet/1.0 (CS-knowledge page check)");
+});
+if (builder.Configuration.GetSection(AppOptions.Section).Get<AppOptions>()?.Knowledge.AutoCurate != false
+    && !builder.Environment.IsEnvironment("Testing"))
+    builder.Services.AddHostedService<KbCuratorHost>();
 builder.Services.AddSingleton<IAnswerWriter>(sp =>
 {
     var assistant = sp.GetRequiredService<IOptions<AppOptions>>().Value.Assistant;

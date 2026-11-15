@@ -15,8 +15,8 @@
 | `/intranet/attendance/kiosk` | 입구 QR 화면: 30초마다 바뀌는 출퇴근 QR (입구 태블릿용) | 대표원장·관리자 |
 | `/intranet/parking` | 주차: 번호 뒷자리로 차주 찾기 · 내 주차 · 내 차량 (관리자: 배정 신청 대기 · 주차면 · 배정) | 로그인한 직원 |
 | `/intranet/people` | 주소록 · 내 부서·연락처 수정 (입사일은 관리자에게만) | 로그인한 직원 |
-| `/intranet/ask` | CS 도우미: 고객 문의 → (켜져 있으면) AI 답변 · FAQ · 안내 문서, 답 복사, 도움됨/부족함, 내 최근 질문, 자료 제안, 전체 자료 | 로그인한 직원 |
-| `/intranet/knowledge` | 자료 관리: 처리할 질문(표현 추가 · FAQ로 만들기 · 닫기) · 승인 대기 · 자료 가져오기(미리 보기 → 초안, AI 정리 지시문) · 승인된 자료(재검토일 · 내리기) · 가져오기 기록 | 대표원장·관리자 |
+| `/intranet/ask` | CS 도우미: 고객 문의 → (켜져 있으면) AI 답변 · FAQ · 안내 문서, 답 복사, 도움됨/부족함(+ 맞는 답 정정), 내 최근 질문, 자료 제안, 전체 자료 | 로그인한 직원 |
+| `/intranet/knowledge` | 자료 관리: 자동 정리 제안(표현 추가 · 홈페이지 변경 → 반영, 지금 정리하기) · 처리할 질문(표현 추가 · FAQ로 만들기 · 닫기, 직원 정정 표시) · 승인 대기 · 자료 가져오기(미리 보기 → 초안, AI 정리 지시문) · 승인된 자료(재검토일 · 내리기) · 병원 홈페이지 확인(주소 등록) · 가져오기 기록 | 대표원장·관리자 |
 | `/intranet/admin` | 직원 관리: 가입 승인·반려, 직무 변경, **입사일**, 사용 중지 | 대표원장·관리자 |
 | `/intranet/settings` | 설정: 근무 요일·시간 · 같은 직무 휴가 경고 인원 · 출퇴근 확인(병원 IP) · 쉬는 날 | 대표원장·관리자 |
 
@@ -32,6 +32,7 @@
 - [ ] 품의·결재 (연차 승인 흐름을 일반화)
 - [ ] 사내 메신저 (1:1·부서방, SignalR)
 - [x] LLM 위키로 CS 응대 = **CS 안내 도우미** (프로토타입): 자료 추출 → 초안 → 승인 → 검색, 못 찾은 질문 → FAQ(학습 고리), 출처 검사 AI 답변 연결부
+- [x] CS 도우미 자동 정리: 직원 정정 → FAQ 초안, 못 찾은 질문 → 표현 추가 제안, 병원 홈페이지 변경 → 자료 고치기 제안 (매일 새벽, 관리자 반영)
 - [x] CS 도우미 AI 답변: 서버 PC 로컬 모델(Ollama `qwen3:4b-instruct`) — `deploy/set-assistant.ps1`로 로컬·Claude API·끄기 전환
 - [ ] 평가 묶음으로 답 품질·비용 측정, 로컬 모델(Ollama)로 옮길지 결정, 영상 대본 바로 가져오기(Whisper)
 - [ ] 홈 화면 설치(PWA)·웹 푸시 알림
@@ -81,8 +82,11 @@
 | 자료 상태 | 초안 → 승인 / 반려(사유 필수, 초안만) · 승인 → 내림(검색에서 빠짐) → 다시 승인 가능 · 승인된 자료는 내린 뒤에만 지움 |
 | 누가 | 직원: 질문, 승인된 자료 보기, 자료 제안(초안). 대표원장·관리자: 가져오기·승인·반려·고치기·내리기·지우기, 처리할 질문 |
 | 가져오기 | `# 큰 제목`/`## 소제목` → 문서, `Q:`/`A:` → FAQ, `분류:`·`키워드:` 줄, `<!-- -->` 무시. 구조 없는 글은 문서 1건. 본문 4,000자 넘으면 나눔. 한 번에 200,000자·300건까지. 모두 초안으로 들어옴 |
-| 검색 | 글자 2개 단위 + BM25, 제목·보조어 두 배. 질문 조각의 40% 이상이 든 자료 = 찾음. FAQ 3 · 문서 5 · 못 찾으면 관련 자료 3 |
-| 학습 고리 | 못 찾은 질문·"부족함" → 처리할 질문 → 기존 자료에 표현 추가(검색 보조어, 60자 이하) · FAQ로 만들기 · 닫기 |
+| 검색 | 글자 2개 단위 + BM25, 제목·보조어 두 배. "2주차·5개월차"처럼 숫자+차례말은 한 덩어리(주차장 질문에 안 걸림). 질문 조각의 40% 이상이 든 자료 = 찾음. FAQ 3 · 문서 5 · 못 찾으면 관련 자료 3 |
+| 학습 고리 | 못 찾은 질문·"부족함"·AI가 "자료에 답 없음"으로 판단한 질문 → 처리할 질문 → 기존 자료에 표현 추가(검색 보조어, 60자 이하) · FAQ로 만들기 · 닫기 |
+| 정정 | 직원이 "부족함 · 틀림"에 맞는 답을 적으면(1,000자, 연락처 가림) 자동 정리가 바로 FAQ 초안을 만듦(AI가 문장만 다듬음, 사실은 더하지 않음) → 관리자가 승인하면 그 질문은 처리됨 |
+| 자동 정리 | 매일 `App:Knowledge:CurateHour`(기본 3시) + "지금 정리하기": ① 정정 → FAQ 초안 ② 못 찾은 질문 → AI가 답이 되는 기존 자료를 골라 표현 추가 제안 ③ 등록한 병원 홈페이지를 다시 읽어 바뀐 줄 → AI가 고친 안을 붙인 자료 고치기 제안. **자료는 관리자가 반영해야 바뀜**. `AutoCurate=false`면 수동만 |
+| 홈페이지 확인 | 공개 도메인 http(s) 주소만(서버 PC·내부망 주소 거부), 30개까지. 처음 읽은 내용이 기준, 스크립트·스타일 빼고 줄 단위 비교, 쪽 사이 1초 간격 |
 | 재검토일 | 지난 승인 자료는 "재검토일 지남" 표시 |
 | 개인정보 | 질문의 전화번호·주민번호는 저장 전에 가림. 환자 기록(01)은 보지 않음 |
 | AI 답변 | 기본 꺼짐. `Mode`: `Claude`(Claude API, 가린 질문과 찾은 자료 4건이 전송됨) 또는 `Ollama`(서버 PC 로컬). 찾은 자료 상위 4건만 근거로 답하고, 근거 번호 검사를 통과해야 보여 줌. 못 찾으면 AI를 부르지 않음, 실패하면 검색 결과만 |
@@ -132,7 +136,7 @@
 | 주차 | `GET /parking/me`, `POST /parking/vehicles`, `DELETE /parking/vehicles/{id}`, `POST /parking/requests`, `POST /parking/requests/{id}/cancel`, `GET /parking/lookup?q=`, ★`GET · POST /parking/spots`, ★`PUT /parking/spots/{id}`, ★`GET /parking/requests`, ★`POST /parking/requests/{id}/reject`, ★`POST /parking/assignments`, ★`POST /parking/assignments/{id}/end`, ★`GET /parking/vehicles` |
 | 설정 · 쉬는 날 | ★`GET · PUT /settings`, `GET /holidays?year=`, ★`POST /holidays`, ★`DELETE /holidays/{date}` |
 | CS 도우미 | `POST /ask`, `POST /ask/{id}/feedback`, `GET /ask/mine`, `GET /ask/status` |
-| CS 자료 | `GET /kb/items?status=&mine=&q=`, `GET /kb/items/{id}`, `POST /kb/items`(직원은 초안 제안), ★`PUT /kb/items/{id}`, ★`POST /kb/items/{id}/approve · reject · archive`, ★`DELETE /kb/items/{id}`, ★`POST /kb/approve`(여러 건), ★`POST /kb/import/preview`, ★`POST /kb/import`, ★`GET /kb/imports`, ★`GET /kb/questions?followUp=`, ★`POST /kb/questions/{id}/dismiss · attach`, ★`GET /kb/overview` |
+| CS 자료 | `GET /kb/items?status=&mine=&q=`, `GET /kb/items/{id}`, `POST /kb/items`(직원은 초안 제안), ★`PUT /kb/items/{id}`, ★`POST /kb/items/{id}/approve · reject · archive`, ★`DELETE /kb/items/{id}`, ★`POST /kb/approve`(여러 건), ★`POST /kb/import/preview`, ★`POST /kb/import`, ★`GET /kb/imports`, ★`GET /kb/questions?followUp=`, ★`POST /kb/questions/{id}/dismiss · attach`, ★`GET /kb/overview`, ★`GET /kb/suggestions`, ★`POST /kb/suggestions/{id}/accept · dismiss`, ★`POST /kb/curate`(지금 정리하기), ★`GET · POST /kb/watch`, ★`DELETE /kb/watch/{id}` |
 
 ## 구성
 
@@ -143,10 +147,10 @@ src/GoodMoNa02.Server
   Endpoints/              Auth · Admin · Home(홈·주소록) · Notice · Leave · Attendance · Parking · Settings · Knowledge(CS 자료) · Ask(CS 도우미) · Problems
   Intranet/               LeavePolicy(근로기준법 §60, 순수 계산) · LeaveLedger(잔여) · WorkCalendar(근무일) · KoreanHolidays(내장 공휴일)
                           ClinicSetup(병원 설정·휴무일·IP 확인) · AttendanceCodes(입구 QR, HMAC 30초) · Plates(차량 번호)
-  Knowledge/              KbExtractor(자료 추출 규칙) · KbText(2-gram·개인정보 가림) · KbIndex(BM25 메모리 색인) · Assistant(AI 답변: 꺼짐/Ollama, 지시문, 근거 검사) · ClaudeAnswerWriter(Claude API)
+  Knowledge/              KbExtractor(자료 추출 규칙) · KbText(2-gram·개인정보 가림) · KbIndex(BM25 메모리 색인) · Assistant(AI 답변: 꺼짐/Ollama, 지시문, 근거 검사) · ClaudeAnswerWriter(Claude API) · KbCurator(자동 정리: 정정 초안·표현 제안·홈페이지 확인)
   Data/                   Staff · StaffSession · IntranetEntities(공지·연차·휴무일·설정·출퇴근·주차) · KnowledgeEntities(CS 자료·가져오기·질문 기록) · AppDbContext · Migrations/
   Contracts/              DTO · StaffInput(입력 검사)
-tests/GoodMoNa02.Server.Tests   통합 테스트 72개: 로그인(16) · 연차 규칙(24, 순수 계산) · 연차 흐름(10) · 출퇴근(4) · 공지·주소록·홈·주차·휴무일·보호(7) · CS 도우미(11)
+tests/GoodMoNa02.Server.Tests   통합 테스트 79개: 로그인(16) · 연차 규칙(24, 순수 계산) · 연차 흐름(10) · 출퇴근(4) · 공지·주소록·홈·주차·휴무일·보호(7) · CS 도우미(18)
 web/                      login · signup · intranet · notices · leave · attendance · kiosk · parking · people · ask · knowledge · intranet-admin · settings
                           (정적 파일은 /intranet-assets/ — 01의 /assets/와 겹치지 않게. 메뉴는 src/shared/chrome.ts 한 곳)
 deploy/install.ps1        서비스 GoodMoNa02 (localhost:5002)

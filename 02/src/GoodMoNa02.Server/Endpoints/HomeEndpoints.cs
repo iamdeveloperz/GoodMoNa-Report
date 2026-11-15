@@ -40,7 +40,8 @@ public static class HomeEndpoints
                 await db.LeaveRequests.CountAsync(r => r.Status == LeaveStatus.Pending, ct),
                 await db.ParkingRequests.CountAsync(r => r.Status == ParkingRequestStatus.Pending, ct),
                 await db.Staff.CountAsync(s => s.Status == StaffStatus.Active && s.HireDate == null, ct),
-                await db.KbItems.CountAsync(i => i.Status == KbStatus.Draft, ct) + await db.AskLogs.CountAsync(a => a.FollowUp == AskFollowUp.Open, ct));
+                await db.KbItems.CountAsync(i => i.Status == KbStatus.Draft, ct) + await db.AskLogs.CountAsync(a => a.FollowUp == AskFollowUp.Open, ct)
+                    + await db.KbSuggestions.CountAsync(s => s.Status == KbSuggestionStatus.Pending, ct));
         }
 
         return Results.Ok(new HomeDto(

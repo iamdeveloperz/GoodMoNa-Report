@@ -6,8 +6,8 @@ import { byId, esc, fmtDate, fmtHM, formValues, toast } from "../shared/format";
 import { KB_KIND, KB_STATUS, type AskHit, type AskLog, type AskResult, type AssistantStatus, type KbItem } from "../shared/types";
 
 /**
- * CS 도우미 (모든 직원): 질문 → AI 답변(켜져 있으면) · FAQ · 문서. 답 복사, 도움됨/부족함, 내 최근 질문, 자료 제안, 전체 자료.
- * 근거를 못 찾은 질문은 서버가 관리자에게 넘깁니다.
+ * CS 도우미 (모든 직원): 질문 → AI 답변(켜져 있으면) · FAQ · 문서. 답 복사, 도움됨/부족함(+ 맞는 답 정정), 내 최근 질문, 자료 제안, 전체 자료.
+ * 근거를 못 찾은 질문은 서버가 관리자에게 넘깁니다. 정정은 자동 정리가 FAQ 초안으로 만들고, 관리자가 승인하면 다음부터 그 답이 나옵니다.
  */
 
 let result: AskResult | null = null;
@@ -34,6 +34,17 @@ function hitHtml(h: AskHit, open: boolean): string {
   </details>`;
 }
 
+/** 맞는 답(정정) 입력: 못 찾았거나 "부족함"일 때 */
+function correctionForm(lead: string, withPlain: boolean): string {
+  return `<form class="card correction" id="correctionForm">
+    ${lead ? `<p class="meta">${esc(lead)}</p>` : ""}
+    <label class="field"><span class="label">맞는 답을 아시면 적어 주세요 — 관리자가 확인하면 FAQ가 되어 다음부터 이 답이 나옵니다</span>
+      <textarea name="correction" rows="3" maxlength="1000" placeholder="예: 건물 지하 주차장 2시간 무료, 데스크에서 차량 번호 등록"></textarea></label>
+    <div class="inline"><button class="btn primary compact" type="submit">정정 보내기</button>
+      ${withPlain ? '<button class="textbtn" type="button" data-helpful="false">정정 없이 "부족함"만 보내기</button>' : ""}</div>
+  </form>`;
+}
+
 function renderResult(): void {
   const box = byId("result");
   const r = result;
@@ -56,15 +67,17 @@ function renderResult(): void {
   const sections = [{ title: "FAQ", hits: r.faqs }, { title: "안내 문서", hits: r.docs }].filter((s) => s.hits.length).sort((a, b) => best(b.hits) - best(a.hits));
   sections.forEach((s, si) => parts.push(`<div class="hits"><h3>${s.title}</h3>${s.hits.map((h, i) => hitHtml(h, si === 0 && i === 0 && !r.answer)).join("")}</div>`));
   if (r.related.length) parts.push(`<div class="hits"><h3>관련 있을 수도 있는 자료</h3>${r.related.map((h) => hitHtml(h, false)).join("")}</div>`);
-  if (r.found)
+  if (r.found && !r.aiDeclined)
     parts.push(`<div class="inline feedback" id="feedback"><span class="meta">이 결과로 응대할 수 있나요?</span>
-      <button class="btn compact" type="button" data-helpful="true">도움됨</button><button class="btn compact" type="button" data-helpful="false">부족함</button></div>`);
+      <button class="btn compact" type="button" data-helpful="true">도움됨</button><button class="btn compact" type="button" data-wrong>부족함 · 틀림</button></div>`);
+  else parts.push(`<div id="feedback">${correctionForm("이 질문은 관리자에게 전달됐습니다.", false)}</div>`);
   box.innerHTML = parts.join("");
 }
 
 function renderMine(list: AskLog[]): void {
   const state = (l: AskLog): string =>
-    l.followUp === "Open" ? '<span class="tag accent">관리자 확인 중</span>'
+    l.followUp === "Open" && l.draftItemId ? '<span class="tag accent">정정 → 승인 대기</span>'
+    : l.followUp === "Open" ? `<span class="tag accent">${l.correction ? "정정 접수" : "관리자 확인 중"}</span>`
     : l.followUp === "Resolved" ? '<span class="tag">FAQ로 정리됨</span>'
     : l.found ? '<span class="tag muted">찾음</span>' : '<span class="tag muted">닫힘</span>';
   byId("mine").innerHTML = list.length === 0
@@ -130,7 +143,14 @@ document.addEventListener("submit", async (e) => {
   e.preventDefault();
   const v = formValues(form);
   if (form.id === "askForm") await ask(v.question ?? "");
-  else if (form.id === "proposeForm") {
+  else if (form.id === "correctionForm" && result) {
+    const correction = (v.correction ?? "").trim();
+    if (!correction && !result.found) {
+      toast("이미 관리자에게 전달됐습니다. 답을 아시면 적어 주세요.");
+      return;
+    }
+    await sendFeedback(false, correction);
+  } else if (form.id === "proposeForm") {
     try {
       await api("POST", "/api/intranet/kb/items", { kind: "Faq", title: v.title, body: v.body });
       form.reset();
@@ -142,19 +162,28 @@ document.addEventListener("submit", async (e) => {
   }
 });
 
+async function sendFeedback(helpful: boolean, correction = ""): Promise<void> {
+  if (!result) return;
+  try {
+    await api("POST", `/api/intranet/ask/${result.logId}/feedback`, { helpful, correction: correction || null });
+    byId("feedback").innerHTML = `<span class="meta">${helpful ? "고맙습니다."
+      : correction ? "정정을 보냈습니다. 곧 FAQ 초안이 만들어지고, 관리자가 승인하면 다음부터 이 답이 나옵니다."
+      : "관리자에게 전달했습니다. 자료를 보완하겠습니다."}</span>`;
+    await loadSide();
+  } catch (ex) {
+    toast(errorMessage(ex));
+  }
+}
+
 document.addEventListener("click", async (e) => {
-  const el = (e.target as HTMLElement).closest<HTMLElement>("[data-copy],[data-helpful],[data-again]");
+  const el = (e.target as HTMLElement).closest<HTMLElement>("[data-copy],[data-helpful],[data-again],[data-wrong]");
   if (!el) return;
   if (el.dataset.copy) await copy(copyTexts.get(el.dataset.copy) ?? "");
-  else if (el.dataset.helpful && result) {
-    try {
-      await api("POST", `/api/intranet/ask/${result.logId}/feedback`, { helpful: el.dataset.helpful === "true" });
-      byId("feedback").innerHTML = `<span class="meta">${el.dataset.helpful === "true" ? "고맙습니다." : "관리자에게 전달했습니다. 자료를 보완하겠습니다."}</span>`;
-      await loadSide();
-    } catch (ex) {
-      toast(errorMessage(ex));
-    }
-  } else if (el.dataset.again) {
+  else if (el.dataset.wrong !== undefined) {
+    byId("feedback").innerHTML = correctionForm("", true);
+    document.querySelector<HTMLTextAreaElement>("#correctionForm textarea")?.focus();
+  } else if (el.dataset.helpful) await sendFeedback(el.dataset.helpful === "true");
+  else if (el.dataset.again) {
     const input = document.querySelector<HTMLInputElement>("#askForm input[name=question]")!;
     input.value = el.dataset.again;
     window.scrollTo({ top: 0 });

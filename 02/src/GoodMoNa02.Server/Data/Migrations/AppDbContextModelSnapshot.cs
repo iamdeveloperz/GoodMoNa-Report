@@ -23,11 +23,24 @@ namespace GoodMoNa02.Server.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("AiDeclined")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("Answered")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Correction")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CuratedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DraftItemId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("FollowUp")
                         .IsRequired()
@@ -295,6 +308,110 @@ namespace GoodMoNa02.Server.Data.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("KbItems");
+                });
+
+            modelBuilder.Entity("GoodMoNa02.Server.Data.KbSuggestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AskLogIds")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DecidedByName")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Phrases")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProposedBody")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SourceUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("KbSuggestions");
+                });
+
+            modelBuilder.Entity("GoodMoNa02.Server.Data.KbWatchPage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastChangedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastCheckedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastText")
+                        .HasMaxLength(100000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Url")
+                        .IsUnique();
+
+                    b.ToTable("KbWatchPages");
                 });
 
             modelBuilder.Entity("GoodMoNa02.Server.Data.LeaveAdjustment", b =>

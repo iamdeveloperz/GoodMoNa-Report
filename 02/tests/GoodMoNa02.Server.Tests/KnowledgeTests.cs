@@ -242,9 +242,11 @@ public sealed class KnowledgeTests : IDisposable
 
     /* ---------- AI 답변 (가짜 모델로 검사 흐름 확인) ---------- */
 
-    private sealed class FakeWriter(Func<IReadOnlyList<Passage>, string> answer) : IAnswerWriter
+    /// <summary>가짜 AI. answer: 직원 질문 답변 / complete: 자동 정리 지시(system)별 응답 (기본 "0" = 고를 자료 없음)</summary>
+    private sealed class FakeWriter(Func<IReadOnlyList<Passage>, string> answer, Func<string, string, string>? complete = null) : IAnswerWriter
     {
         public List<IReadOnlyList<Passage>> Calls { get; } = [];
+        public List<(string System, string User)> Completions { get; } = [];
         public AssistantStatusDto Status => new(true, "Fake", "test");
 
         public Task<string> WriteAsync(string question, IReadOnlyList<Passage> passages, CancellationToken ct)
@@ -252,11 +254,21 @@ public sealed class KnowledgeTests : IDisposable
             Calls.Add(passages);
             return Task.FromResult(answer(passages));
         }
+
+        public Task<string> CompleteAsync(string system, string user, CancellationToken ct)
+        {
+            Completions.Add((system, user));
+            return Task.FromResult(complete?.Invoke(system, user) ?? "0");
+        }
     }
 
-    private async Task<HttpClient> WithAnswersAsync(FakeWriter writer)
+    private async Task<HttpClient> WithAnswersAsync(FakeWriter writer, Action<IServiceCollection>? more = null)
     {
-        _app.TestServices = s => s.Replace(ServiceDescriptor.Singleton<IAnswerWriter>(writer));
+        _app.TestServices = s =>
+        {
+            s.Replace(ServiceDescriptor.Singleton<IAnswerWriter>(writer));
+            more?.Invoke(s);
+        };
         var owner = await _app.OwnerAsync();
         var imported = await owner.Post("/api/intranet/kb/import", new { text = Sample, name = "진료안내" }).Ok<KbImportResultDto>();
         await owner.Post("/api/intranet/kb/approve", new { ids = imported.Items.Select(i => i.Id).ToArray() }).Ok<Dictionary<string, int>>();
@@ -314,5 +326,174 @@ public sealed class KnowledgeTests : IDisposable
         Assert.Null(r.Answer);
         Assert.Contains("AI 답변을 지금 쓸 수 없어", r.Note);
         Assert.Equal("진료 안내 · 진료 시간", r.Docs[0].Title);
+    }
+
+    /* ---------- 검색 오탐 · AI 판단 ---------- */
+
+    [Fact]
+    public void 숫자_차례말은_한_덩어리라_주차장_질문에_걸리지_않는다()
+    {
+        var t = KbText.Tokens("수술 2주차: 지문 샴푸, 5개월차에 확인");
+        Assert.Contains("2주차", t);
+        Assert.Contains("5개월차", t);
+        Assert.DoesNotContain("주차", t);
+        Assert.DoesNotContain("개월", t);
+        Assert.Contains("주차", KbText.Tokens("주차장 이용"));
+        Assert.Contains("시간", KbText.Tokens("2시간 무료")); // 차례말이 아닌 숫자 낱말은 그대로
+    }
+
+    [Fact]
+    public async Task 수술_2주차_안내는_주차_질문의_근거가_되지_않는다()
+    {
+        var owner = await _app.OwnerAsync();
+        var text = "## 수술 후 관리\n수술 7일차: 염증 확인.\n수술 2주차: 지문 샴푸 교육.\n수술 4주차: 경과 확인.";
+        var imported = await owner.Post("/api/intranet/kb/import", new { text, name = "사후관리" }).Ok<KbImportResultDto>();
+        await owner.Post("/api/intranet/kb/approve", new { ids = imported.Items.Select(i => i.Id).ToArray() }).Ok<Dictionary<string, int>>();
+
+        var parking = await owner.Post("/api/intranet/ask", new { question = "주차 돼요?" }).Ok<AskResultDto>();
+        Assert.False(parking.Found);
+        var week = await owner.Post("/api/intranet/ask", new { question = "2주차에 뭐 해요" }).Ok<AskResultDto>();
+        Assert.True(week.Found);
+    }
+
+    [Fact]
+    public async Task AI가_자료에_답이_없다고_하면_관리자에게_넘어간다()
+    {
+        var nurse = await WithAnswersAsync(new FakeWriter(_ => "자료에 없음"));
+        var r = await nurse.Post("/api/intranet/ask", new { question = "주차 발렛 되나요" }).Ok<AskResultDto>();
+        Assert.True(r.Found);
+        Assert.True(r.AiDeclined);
+        Assert.Null(r.Answer);
+
+        var owner = await _app.OwnerAsync();
+        var q = Assert.Single(await owner.Get<List<AskLogDto>>("/api/intranet/kb/questions"));
+        Assert.True(q.AiDeclined);
+        Assert.Equal(AskFollowUp.Open, q.FollowUp);
+    }
+
+    /* ---------- ① 직원 정정 → FAQ 초안 → 승인 ---------- */
+
+    [Fact]
+    public async Task 직원_정정은_AI가_다듬은_FAQ_초안이_되고_승인하면_질문이_처리된다()
+    {
+        var writer = new FakeWriter(_ => "자료에 없음", (system, _) => system == CuratePrompt.Polish ? "상담 후 정확한 금액을 안내해 드립니다." : "0");
+        var nurse = await WithAnswersAsync(writer);
+        var owner = await _app.OwnerAsync();
+
+        var miss = await nurse.Post("/api/intranet/ask", new { question = "보톡스 가격 알려주세요" }).Ok<AskResultDto>();
+        Assert.False(miss.Found);
+        await nurse.Post($"/api/intranet/ask/{miss.LogId}/feedback", new { helpful = true, correction = "상담 후 안내" }).Status(HttpStatusCode.BadRequest);
+        await nurse.Post($"/api/intranet/ask/{miss.LogId}/feedback", new { helpful = false, correction = "상담 후 안내. 문의 010-1234-5678" }).Status(HttpStatusCode.NoContent);
+
+        var q = Assert.Single(await owner.Get<List<AskLogDto>>("/api/intranet/kb/questions"));
+        Assert.Equal("상담 후 안내. 문의 010-****-****", q.Correction); // 연락처는 가려서 저장
+        Assert.Null(q.DraftItemId);
+
+        var run = await owner.Post("/api/intranet/kb/curate").Ok<KbCurateResultDto>();
+        Assert.Equal(1, run.Drafts);
+        Assert.Contains(writer.Completions, c => c.System == CuratePrompt.Polish && c.User.Contains("010-****-****"));
+        var draft = Assert.Single(await owner.Get<List<KbItemDto>>("/api/intranet/kb/items?status=Draft"));
+        Assert.Equal((KbKind.Faq, "보톡스 가격 알려주세요", "상담 후 정확한 금액을 안내해 드립니다.", KbSource.Question), (draft.Kind, draft.Title, draft.Body, draft.Source));
+        Assert.Equal(draft.Id, Assert.Single(await owner.Get<List<AskLogDto>>("/api/intranet/kb/questions")).DraftItemId);
+        await nurse.Post($"/api/intranet/ask/{miss.LogId}/feedback", new { helpful = false, correction = "다시" }).Status(HttpStatusCode.Conflict);
+
+        Assert.Equal(0, (await owner.Post("/api/intranet/kb/curate").Ok<KbCurateResultDto>()).Drafts); // 같은 정정으로 두 번 만들지 않음
+
+        await owner.Post($"/api/intranet/kb/items/{draft.Id}/approve").Ok<KbItemDto>();
+        Assert.Empty(await owner.Get<List<AskLogDto>>("/api/intranet/kb/questions"));
+        var mine = Assert.Single(await nurse.Get<List<AskLogDto>>("/api/intranet/ask/mine"));
+        Assert.Equal((AskFollowUp.Resolved, draft.Id), (mine.FollowUp, mine.ResolvedItemId));
+        Assert.True((await nurse.Post("/api/intranet/ask", new { question = "보톡스 가격 알려주세요" }).Ok<AskResultDto>()).Found);
+    }
+
+    /* ---------- ② 못 찾은 질문 → 표현 추가 제안 ---------- */
+
+    [Fact]
+    public async Task 못_찾은_질문은_AI가_고른_자료에_표현_추가_제안이_되고_반영하면_찾는다()
+    {
+        var writer = new FakeWriter(_ => "자료에 없음", (system, user) => system == CuratePrompt.Pick && user.Contains("[1] 진료 안내 · 주차") ? "1" : "0");
+        var nurse = await WithAnswersAsync(writer);
+        var owner = await _app.OwnerAsync();
+
+        var miss = await nurse.Post("/api/intranet/ask", new { question = "지하에 차 대도 돼요?" }).Ok<AskResultDto>();
+        Assert.False(miss.Found);
+        Assert.Equal(HttpStatusCode.Forbidden, (await nurse.GetAsync("/api/intranet/kb/suggestions")).StatusCode); // 직원은 못 봄
+        await nurse.Post("/api/intranet/kb/curate").Status(HttpStatusCode.Forbidden);
+
+        var run = await owner.Post("/api/intranet/kb/curate").Ok<KbCurateResultDto>();
+        Assert.Equal(1, run.KeywordSuggestions);
+        var s = Assert.Single(await owner.Get<List<KbSuggestionDto>>("/api/intranet/kb/suggestions"));
+        Assert.Equal((KbSuggestionKind.Keywords, "진료 안내 · 주차"), (s.Kind, s.ItemTitle));
+        Assert.Equal(["지하에 차 대도 돼요"], s.Phrases);
+
+        Assert.Equal(0, (await owner.Post("/api/intranet/kb/curate").Ok<KbCurateResultDto>()).KeywordSuggestions); // 한 번 본 질문은 다시 묻지 않음
+
+        await owner.Post($"/api/intranet/kb/suggestions/{s.Id}/accept").Ok<Dictionary<string, string>>();
+        await owner.Post($"/api/intranet/kb/suggestions/{s.Id}/accept").Status(HttpStatusCode.Conflict);
+        Assert.Empty(await owner.Get<List<KbSuggestionDto>>("/api/intranet/kb/suggestions"));
+        Assert.Empty(await owner.Get<List<AskLogDto>>("/api/intranet/kb/questions"));
+        var again = await nurse.Post("/api/intranet/ask", new { question = "지하에 차 대도 돼요?" }).Ok<AskResultDto>();
+        Assert.Equal(s.ItemId, again.Docs.First().Id);
+    }
+
+    /* ---------- ③ 병원 홈페이지 변경 → 자료 고치기 제안 ---------- */
+
+    private sealed class FakeSite : HttpMessageHandler
+    {
+        public string Html { get; set; } = "";
+        public int Requests { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Requests++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Html, System.Text.Encoding.UTF8, "text/html") });
+        }
+    }
+
+    [Fact]
+    public async Task 홈페이지가_바뀌면_AI가_고친_안으로_자료_고치기_제안이_생긴다()
+    {
+        const string Fixed = "평일 오전 9시부터 오후 7시까지 진료합니다. 점심시간은 오후 1시~2시입니다.";
+        var writer = new FakeWriter(_ => "자료에 없음",
+            (system, user) => system == CuratePrompt.SiteChange ? (user.Contains("[기존 자료] 진료 안내 · 진료 시간") ? Fixed : CuratePrompt.NoChange) : "0");
+        var site = new FakeSite { Html = "<html><head><style>p{}</style></head><body><script>var t = 1;</script><h2>진료 시간</h2><p>평일 오전 9시부터 오후 6시까지</p><!-- 메모 --></body></html>" };
+        await WithAnswersAsync(writer, s => s.AddHttpClient(KbCurator.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => site));
+        var owner = await _app.OwnerAsync();
+
+        foreach (var bad in new[] { "http://localhost/info", "ftp://clinic.example.com/", "https://10.0.0.5/info", "주소 아님" })
+            await owner.Post("/api/intranet/kb/watch", new { url = bad }).Status(HttpStatusCode.BadRequest);
+        await owner.Post("/api/intranet/kb/watch", new { url = "https://clinic.example.com/info" }).Status(HttpStatusCode.Created);
+        await owner.Post("/api/intranet/kb/watch", new { url = "https://clinic.example.com/info" }).Status(HttpStatusCode.Conflict);
+
+        // 처음엔 기준만 저장
+        var first = await owner.Post("/api/intranet/kb/curate").Ok<KbCurateResultDto>();
+        Assert.Equal((1, 0), (first.PagesChecked, first.SiteChanges));
+        var page = Assert.Single(await owner.Get<List<KbWatchPageDto>>("/api/intranet/kb/watch"));
+        Assert.Equal(2, page.Lines); // 스크립트·스타일·메모 빼고 "진료 시간", "평일 …"
+        Assert.Equal(1, site.Requests);
+
+        site.Html = site.Html.Replace("오후 6시까지", "오후 7시까지");
+        var second = await owner.Post("/api/intranet/kb/curate").Ok<KbCurateResultDto>();
+        Assert.Equal(1, second.SiteChanges);
+        var s = Assert.Single(await owner.Get<List<KbSuggestionDto>>("/api/intranet/kb/suggestions"));
+        Assert.Equal((KbSuggestionKind.SiteChange, "진료 안내 · 진료 시간", Fixed), (s.Kind, s.ItemTitle, s.ProposedBody));
+        Assert.Contains("- 평일 오전 9시부터 오후 6시까지", s.Detail);
+        Assert.Contains("+ 평일 오전 9시부터 오후 7시까지", s.Detail);
+
+        Assert.Equal(0, (await owner.Post("/api/intranet/kb/curate").Ok<KbCurateResultDto>()).SiteChanges); // 그대로면 제안 없음
+
+        await owner.Post($"/api/intranet/kb/suggestions/{s.Id}/accept", new { body = Fixed + " 토요일은 휴진입니다." }).Ok<Dictionary<string, string>>();
+        var item = await owner.Get<KbItemDto>($"/api/intranet/kb/items/{s.ItemId}");
+        Assert.Equal(Fixed + " 토요일은 휴진입니다.", item.Body); // 관리자가 손본 본문으로
+        Assert.Equal(KbStatus.Published, item.Status);
+    }
+
+    [Fact]
+    public async Task 자동_정리와_홈페이지_목록은_관리자만()
+    {
+        var (nurse, _) = await _app.MemberAsync("nurse1", "Nurse");
+        Assert.Equal(HttpStatusCode.Forbidden, (await nurse.GetAsync("/api/intranet/kb/watch")).StatusCode);
+        await nurse.Post("/api/intranet/kb/watch", new { url = "https://clinic.example.com/" }).Status(HttpStatusCode.Forbidden);
+        await nurse.Post("/api/intranet/kb/suggestions/1/accept").Status(HttpStatusCode.Forbidden);
     }
 }

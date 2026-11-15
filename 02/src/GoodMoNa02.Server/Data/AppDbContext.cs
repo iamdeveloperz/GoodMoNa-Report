@@ -26,6 +26,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<KbItem> KbItems => Set<KbItem>();
     public DbSet<KbImport> KbImports => Set<KbImport>();
     public DbSet<AskLog> AskLogs => Set<AskLog>();
+    public DbSet<KbSuggestion> KbSuggestions => Set<KbSuggestion>();
+    public DbSet<KbWatchPage> KbWatchPages => Set<KbWatchPage>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -175,8 +177,30 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(a => a.StaffName).HasMaxLength(30);
             e.Property(a => a.Question).HasMaxLength(KbLimits.Question);
             e.Property(a => a.FollowUp).HasConversion<string>().HasMaxLength(16);
+            e.Property(a => a.Correction).HasMaxLength(KbLimits.Correction);
             e.HasIndex(a => a.FollowUp);
             e.HasIndex(a => new { a.StaffId, a.CreatedAt });
+        });
+        b.Entity<KbSuggestion>(e =>
+        {
+            e.Property(s => s.Kind).HasConversion<string>().HasMaxLength(16);
+            e.Property(s => s.Status).HasConversion<string>().HasMaxLength(16);
+            e.Property(s => s.Title).HasMaxLength(KbLimits.Title);
+            e.Property(s => s.Detail).HasMaxLength(KbLimits.Body);
+            e.Property(s => s.Phrases).HasMaxLength(1000);
+            e.Property(s => s.ProposedBody).HasMaxLength(KbLimits.Body);
+            e.Property(s => s.AskLogIds).HasMaxLength(1000);
+            e.Property(s => s.SourceUrl).HasMaxLength(KbLimits.Url);
+            e.Property(s => s.DecidedByName).HasMaxLength(30);
+            e.HasIndex(s => s.Status);
+        });
+        b.Entity<KbWatchPage>(e =>
+        {
+            e.Property(w => w.Url).HasMaxLength(KbLimits.Url);
+            e.HasIndex(w => w.Url).IsUnique();
+            e.Property(w => w.LastText).HasMaxLength(KbLimits.PageText);
+            e.Property(w => w.LastHash).HasMaxLength(64);
+            e.Property(w => w.LastError).HasMaxLength(300);
         });
     }
 

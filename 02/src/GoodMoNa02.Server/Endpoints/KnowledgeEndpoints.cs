@@ -34,6 +34,13 @@ public static class KnowledgeEndpoints
         g.MapPost("/questions/{id:int}/dismiss", Dismiss).RequireAuthorization(Policies.ManageStaff);
         g.MapPost("/questions/{id:int}/attach", Attach).RequireAuthorization(Policies.ManageStaff);
         g.MapGet("/overview", Overview).RequireAuthorization(Policies.ManageStaff);
+        g.MapGet("/suggestions", Suggestions).RequireAuthorization(Policies.ManageStaff);
+        g.MapPost("/suggestions/{id:int}/accept", Accept).RequireAuthorization(Policies.ManageStaff);
+        g.MapPost("/suggestions/{id:int}/dismiss", DismissSuggestion).RequireAuthorization(Policies.ManageStaff);
+        g.MapPost("/curate", Curate).RequireAuthorization(Policies.ManageStaff);
+        g.MapGet("/watch", WatchPages).RequireAuthorization(Policies.ManageStaff);
+        g.MapPost("/watch", AddWatchPage).RequireAuthorization(Policies.ManageStaff);
+        g.MapDelete("/watch/{id:int}", DeleteWatchPage).RequireAuthorization(Policies.ManageStaff);
     }
 
     public static readonly string[] Origins = ["직접", "Claude", "Codex", "기타 AI"];
@@ -150,6 +157,7 @@ public static class KnowledgeEndpoints
         item.UpdatedAt = clock.UtcNow;
         if (item.Status == KbStatus.Published || req.Publish) Decide(item, KbStatus.Published, user, clock);
         await db.SaveChangesAsync(ct);
+        if (item.Status == KbStatus.Published) await ResolveDraftQuestionsAsync(db, [item.Id], ct);
         index.Invalidate();
         return Results.Ok(ToDto(item, clock.Today));
     }
@@ -171,9 +179,15 @@ public static class KnowledgeEndpoints
         if (item.Status == KbStatus.Published) return Problems.Conflict("이미 승인된 자료입니다.");
         Decide(item, KbStatus.Published, user, clock);
         await db.SaveChangesAsync(ct);
+        await ResolveDraftQuestionsAsync(db, [item.Id], ct);
         index.Invalidate();
         return Results.Ok(ToDto(item, clock.Today));
     }
+
+    /// <summary>정정으로 만든 FAQ 초안이 승인되면 그 질문은 처리됨 (학습 고리가 닫힘)</summary>
+    private static Task<int> ResolveDraftQuestionsAsync(AppDbContext db, List<int> itemIds, CancellationToken ct) =>
+        db.AskLogs.Where(a => a.DraftItemId != null && itemIds.Contains(a.DraftItemId.Value) && a.FollowUp == AskFollowUp.Open)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.FollowUp, AskFollowUp.Resolved).SetProperty(a => a.ResolvedItemId, a => a.DraftItemId), ct);
 
     /// <summary>여러 초안을 한 번에 승인 (가져오기로 만든 묶음을 검토한 뒤). 초안이 아닌 것은 건너뜀</summary>
     private static async Task<IResult> ApproveMany(KbIdsRequest req, ClaimsPrincipal user, AppDbContext db, ClinicClock clock, KbIndex index, CancellationToken ct)
@@ -183,6 +197,7 @@ public static class KnowledgeEndpoints
         var items = await db.KbItems.Where(i => ids.Contains(i.Id) && i.Status == KbStatus.Draft).ToListAsync(ct);
         foreach (var i in items) Decide(i, KbStatus.Published, user, clock);
         await db.SaveChangesAsync(ct);
+        await ResolveDraftQuestionsAsync(db, items.Select(i => i.Id).ToList(), ct);
         index.Invalidate();
         return Results.Ok(new { approved = items.Count });
     }
@@ -219,6 +234,8 @@ public static class KnowledgeEndpoints
         if (item is null) return Results.NoContent();
         if (item.Status == KbStatus.Published) return Problems.Conflict("승인된 자료는 먼저 내린 뒤 지울 수 있습니다.");
         await db.AskLogs.Where(a => a.ResolvedItemId == id).ExecuteUpdateAsync(s => s.SetProperty(a => a.ResolvedItemId, (int?)null), ct);
+        await db.AskLogs.Where(a => a.DraftItemId == id).ExecuteUpdateAsync(s => s.SetProperty(a => a.DraftItemId, (int?)null), ct);
+        await db.KbSuggestions.Where(s => s.ItemId == id).ExecuteUpdateAsync(s => s.SetProperty(x => x.ItemId, (int?)null), ct);
         db.KbItems.Remove(item);
         await db.SaveChangesAsync(ct);
         return Results.NoContent();
@@ -288,7 +305,8 @@ public static class KnowledgeEndpoints
         var titles = await db.KbItems.Where(i => ids.Contains(i.Id)).ToDictionaryAsync(i => i.Id, i => i.Title, ct);
         return logs.Select(l => new AskLogDto(
             l.Id, l.Question, l.StaffId, l.StaffName, l.CreatedAt, l.Found, l.Answered, l.Helpful, l.FollowUp,
-            l.TopItemId, l.TopItemId is { } t ? titles.GetValueOrDefault(t) : null, l.TopCoverage, l.ResolvedItemId)).ToList();
+            l.TopItemId, l.TopItemId is { } t ? titles.GetValueOrDefault(t) : null, l.TopCoverage, l.ResolvedItemId,
+            l.AiDeclined, l.Correction, l.DraftItemId)).ToList();
     }
 
     /// <summary>답할 필요 없는 질문 닫기 (잡담·중복 등)</summary>
@@ -325,13 +343,124 @@ public static class KnowledgeEndpoints
         return Results.Ok(ToDto(item, clock.Today));
     }
 
-    private static async Task<IResult> Overview(AppDbContext db, ClinicClock clock, IAnswerWriter writer, CancellationToken ct)
+    private static async Task<IResult> Overview(AppDbContext db, ClinicClock clock, IAnswerWriter writer, KbCurator curator, CancellationToken ct)
     {
         var today = clock.Today;
         var counts = await db.KbItems.GroupBy(i => i.Status).Select(g => new { g.Key, Count = g.Count() }).ToListAsync(ct);
         var stale = await db.KbItems.CountAsync(i => i.Status == KbStatus.Published && i.ReviewBy < today, ct);
         var open = await db.AskLogs.CountAsync(a => a.FollowUp == AskFollowUp.Open, ct);
+        var suggestions = await db.KbSuggestions.CountAsync(s => s.Status == KbSuggestionStatus.Pending, ct);
+        var pages = await db.KbWatchPages.CountAsync(ct);
         int Count(KbStatus s) => counts.FirstOrDefault(c => c.Key == s)?.Count ?? 0;
-        return Results.Ok(new KbOverviewDto(Count(KbStatus.Draft), Count(KbStatus.Published), stale, open, writer.Status));
+        return Results.Ok(new KbOverviewDto(Count(KbStatus.Draft), Count(KbStatus.Published), stale, open, writer.Status, suggestions, pages, curator.LastRun));
+    }
+
+    /* ---------- 자동 정리 제안 ---------- */
+
+    private static async Task<IResult> Suggestions(AppDbContext db, CancellationToken ct)
+    {
+        var list = await db.KbSuggestions.AsNoTracking().Where(s => s.Status == KbSuggestionStatus.Pending).OrderBy(s => s.Id).Take(200).ToListAsync(ct);
+        var ids = list.Where(s => s.ItemId is not null).Select(s => s.ItemId!.Value).Distinct().ToList();
+        var items = await db.KbItems.AsNoTracking().Where(i => ids.Contains(i.Id)).ToDictionaryAsync(i => i.Id, ct);
+        return Results.Ok(list.Select(s =>
+        {
+            var item = s.ItemId is { } id ? items.GetValueOrDefault(id) : null;
+            return new KbSuggestionDto(s.Id, s.Kind, s.Status, s.ItemId, item?.Title, item?.Body, s.Title, s.Detail,
+                KbCurator.Lines(s.Phrases).ToList(), s.ProposedBody, s.SourceUrl, s.CreatedAt);
+        }).ToList());
+    }
+
+    /// <summary>
+    /// 제안 반영. 표현 추가: 표현들을 검색 보조어로 붙이고 그 질문들을 처리됨으로.
+    /// 홈페이지 변경: AI가 고친 본문(또는 관리자가 손본 Body)으로 자료를 바꿈. 고칠 본문이 없으면 "확인함"으로만 닫음.
+    /// </summary>
+    private static async Task<IResult> Accept(int id, KbAcceptRequest? req, ClaimsPrincipal user, AppDbContext db, ClinicClock clock, KbIndex index, CancellationToken ct)
+    {
+        var s = await db.KbSuggestions.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (s is null) return Problems.NotFound("제안을 찾을 수 없습니다.");
+        if (s.Status != KbSuggestionStatus.Pending) return Problems.Conflict("이미 처리한 제안입니다.");
+        var item = s.ItemId is { } itemId ? await db.KbItems.FirstOrDefaultAsync(i => i.Id == itemId, ct) : null;
+        var message = "확인했습니다.";
+
+        if (s.Kind == KbSuggestionKind.Keywords)
+        {
+            if (item is null || item.Status != KbStatus.Published) return Problems.Conflict("대상 자료가 승인 상태가 아닙니다. 제안을 닫아 주세요.");
+            var keywords = item.Keywords;
+            var added = 0;
+            foreach (var phrase in KbCurator.Lines(s.Phrases).Where(ph => !item.Keywords.Contains(ph, StringComparison.Ordinal)))
+            {
+                var next = keywords.Length == 0 ? phrase : $"{keywords}, {phrase}";
+                if (next.Length > KbLimits.Keywords) break;
+                (keywords, added) = (next, added + 1);
+            }
+            if (added == 0 && KbCurator.Lines(s.Phrases).Any(ph => !item.Keywords.Contains(ph, StringComparison.Ordinal)))
+                return Problems.Conflict("이 자료의 검색 보조어가 가득 찼습니다. 자료를 고쳐 정리하거나 FAQ로 만들어 주세요.");
+            item.Keywords = keywords;
+            item.UpdatedAt = clock.UtcNow;
+            Decide(item, KbStatus.Published, user, clock);
+            var logIds = s.AskLogIds.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => int.TryParse(x, out var n) ? n : 0).ToList();
+            await db.AskLogs.Where(a => logIds.Contains(a.Id) && a.FollowUp == AskFollowUp.Open)
+                .ExecuteUpdateAsync(x => x.SetProperty(a => a.FollowUp, AskFollowUp.Resolved).SetProperty(a => a.ResolvedItemId, item.Id), ct);
+            message = $"표현 {added}개를 붙였습니다. 다음부터 이 표현으로도 찾습니다.";
+        }
+        else
+        {
+            var body = (req?.Body ?? s.ProposedBody ?? "").Trim().Replace("\r\n", "\n");
+            if (body.Length > 0)
+            {
+                if (item is null) return Problems.Conflict("고칠 자료가 없습니다. \"새 자료 쓰기\"로 직접 추가해 주세요.");
+                if (item.Status != KbStatus.Published) return Problems.Conflict("대상 자료가 승인 상태가 아닙니다. 제안을 닫아 주세요.");
+                if (body.Length > KbLimits.Body) return Problems.Validation("body", $"본문은 {KbLimits.Body}자까지입니다.");
+                item.Body = body;
+                item.UpdatedAt = clock.UtcNow;
+                Decide(item, KbStatus.Published, user, clock);
+                message = "자료를 고쳤습니다.";
+            }
+        }
+        s.Status = KbSuggestionStatus.Accepted;
+        s.DecidedAt = clock.UtcNow;
+        s.DecidedByName = Name(user);
+        await db.SaveChangesAsync(ct);
+        index.Invalidate();
+        return Results.Ok(new { message });
+    }
+
+    private static async Task<IResult> DismissSuggestion(int id, ClaimsPrincipal user, AppDbContext db, ClinicClock clock, CancellationToken ct)
+    {
+        var s = await db.KbSuggestions.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (s is null) return Problems.NotFound("제안을 찾을 수 없습니다.");
+        if (s.Status == KbSuggestionStatus.Pending) (s.Status, s.DecidedAt, s.DecidedByName) = (KbSuggestionStatus.Dismissed, clock.UtcNow, Name(user));
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
+    }
+
+    /// <summary>지금 정리하기: 정정 초안 · 표현 제안 · 홈페이지 확인을 바로 (보통은 매일 새벽 자동)</summary>
+    private static async Task<IResult> Curate(KbCurator curator, CancellationToken ct) =>
+        await curator.TryRunAsync(full: true, ct) is { } r ? Results.Ok(r) : Problems.Conflict("이미 정리 중입니다. 잠시 뒤 다시 확인해 주세요.");
+
+    /* ---------- 확인할 병원 홈페이지 ---------- */
+
+    private static KbWatchPageDto ToDto(KbWatchPage w) =>
+        new(w.Id, w.Url, w.LastCheckedAt, w.LastChangedAt, w.LastError, KbCurator.Lines(w.LastText).Count());
+
+    private static async Task<IResult> WatchPages(AppDbContext db, CancellationToken ct) =>
+        Results.Ok((await db.KbWatchPages.AsNoTracking().OrderBy(w => w.Id).ToListAsync(ct)).Select(ToDto).ToList());
+
+    /// <summary>주소 추가. 처음 확인할 때 읽은 내용이 기준이 되고, 그 뒤 바뀌면 제안이 생깁니다.</summary>
+    private static async Task<IResult> AddWatchPage(KbWatchRequest req, AppDbContext db, ClinicClock clock, CancellationToken ct)
+    {
+        if (KbCurator.CheckWatchUrl(req.Url, out var error) is not { } url) return Problems.Validation("url", error);
+        if (await db.KbWatchPages.AnyAsync(w => w.Url == url, ct)) return Problems.Conflict("이미 등록한 주소입니다.");
+        if (await db.KbWatchPages.CountAsync(ct) >= KbLimits.WatchPages) return Problems.Conflict($"홈페이지 주소는 {KbLimits.WatchPages}개까지 등록할 수 있습니다.");
+        var page = new KbWatchPage { Url = url, CreatedAt = clock.UtcNow };
+        db.KbWatchPages.Add(page);
+        await db.SaveChangesAsync(ct);
+        return Results.Created($"/api/intranet/kb/watch/{page.Id}", ToDto(page));
+    }
+
+    private static async Task<IResult> DeleteWatchPage(int id, AppDbContext db, CancellationToken ct)
+    {
+        await db.KbWatchPages.Where(w => w.Id == id).ExecuteDeleteAsync(ct);
+        return Results.NoContent();
     }
 }

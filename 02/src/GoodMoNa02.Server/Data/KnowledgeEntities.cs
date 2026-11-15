@@ -123,4 +123,80 @@ public sealed class AskLog
 
     /// <summary>이 질문으로 만든 자료</summary>
     public int? ResolvedItemId { get; set; }
+
+    /// <summary>자료는 찾았지만 AI가 "자료에 없음"이라고 판단 (검색이 엉뚱한 자료를 집은 경우) → 관리자 확인</summary>
+    public bool AiDeclined { get; set; }
+
+    /// <summary>직원이 적은 맞는 답 (정정). 자동 정리가 이것으로 FAQ 초안을 만듭니다.</summary>
+    public string? Correction { get; set; }
+
+    /// <summary>정정으로 만든 FAQ 초안. 승인되면 이 질문은 처리됨</summary>
+    public int? DraftItemId { get; set; }
+
+    /// <summary>자동 정리가 이 질문을 살펴본 시각 (같은 질문을 밤마다 다시 묻지 않게)</summary>
+    public DateTime? CuratedAt { get; set; }
+}
+
+/* ===================== 자동 정리 (밤마다 · 지금 정리하기) ===================== */
+
+public enum KbSuggestionKind
+{
+    /// <summary>못 찾은 질문 표현을 이미 있는 자료의 검색 보조어로 붙이자는 제안</summary>
+    Keywords,
+    /// <summary>병원 홈페이지 내용이 바뀌어 자료를 고치자는 제안</summary>
+    SiteChange
+}
+
+public enum KbSuggestionStatus
+{
+    Pending,
+    Accepted,
+    Dismissed
+}
+
+/// <summary>자동 정리가 만든 제안. 관리자가 "반영"해야 자료가 바뀝니다(사람이 마지막에 확인).</summary>
+public sealed class KbSuggestion
+{
+    public int Id { get; set; }
+    public KbSuggestionKind Kind { get; set; }
+    public KbSuggestionStatus Status { get; set; }
+
+    /// <summary>바꿀 자료 (홈페이지 변경인데 맞는 자료를 못 찾았으면 비어 있음)</summary>
+    public int? ItemId { get; set; }
+
+    /// <summary>한 줄 요약</summary>
+    public required string Title { get; set; }
+
+    /// <summary>근거: 붙일 질문들 · 홈페이지에서 바뀐 줄</summary>
+    public string Detail { get; set; } = "";
+
+    /// <summary>Keywords: 붙일 표현(줄마다 하나)</summary>
+    public string Phrases { get; set; } = "";
+
+    /// <summary>SiteChange: AI가 고친 자료 본문 (반영하면 이것으로 바뀜)</summary>
+    public string? ProposedBody { get; set; }
+
+    /// <summary>이 제안이 처리할 질문 기록 번호들 (쉼표)</summary>
+    public string AskLogIds { get; set; } = "";
+
+    public string? SourceUrl { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? DecidedAt { get; set; }
+    public string? DecidedByName { get; set; }
+}
+
+/// <summary>매일 확인하는 병원 홈페이지 주소. 처음 읽은 내용을 기준으로 삼고, 바뀌면 제안을 만듭니다.</summary>
+public sealed class KbWatchPage
+{
+    public int Id { get; set; }
+    public required string Url { get; set; }
+
+    /// <summary>마지막으로 읽은 본문 글자 (줄 단위)</summary>
+    public string? LastText { get; set; }
+
+    public string? LastHash { get; set; }
+    public DateTime? LastCheckedAt { get; set; }
+    public DateTime? LastChangedAt { get; set; }
+    public string? LastError { get; set; }
+    public DateTime CreatedAt { get; set; }
 }

@@ -40,6 +40,7 @@ public static class AskEndpoints
 
         AskAnswerDto? answer = null;
         string? note = null;
+        var declined = false;
         if (found && writer.Status.Enabled)
         {
             // 근거는 종류와 상관없이 잘 맞는 순서대로 (보여 주는 FAQ·문서 안에서)
@@ -51,6 +52,12 @@ public static class AskEndpoints
                 var raw = await writer.WriteAsync(question, passages, ct);
                 if (AnswerCheck.Accept(raw, passages.Count) is { } ok)
                     answer = new AskAnswerDto(ok.Text, ok.Cited.Select(n => passages[n - 1]).Select(p => new AskSourceDto(p.N, p.ItemId, p.Title)).ToList());
+                else if (raw.Contains(AnswerPrompt.NotFound))
+                {
+                    // 검색은 뭔가 걸렸지만(예: 비슷한 낱말) AI가 읽어 보니 답이 없음 → 못 찾은 질문처럼 관리자에게
+                    declined = true;
+                    note = "찾은 자료에는 이 질문의 답이 없습니다. 관리자에게 전달되어 자료를 보완합니다. 아래는 비슷한 낱말이 든 자료입니다.";
+                }
                 else note = "AI가 자료에 맞는 답을 만들지 못해 찾은 자료만 보여 드립니다.";
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
@@ -66,26 +73,39 @@ public static class AskEndpoints
         {
             StaffId = AuthEndpoints.StaffId(user), StaffName = user.Identity?.Name ?? "직원", Question = question, CreatedAt = clock.UtcNow,
             Found = found, TopItemId = top?.Id, TopCoverage = Math.Round(top?.Coverage ?? 0, 2), Answered = answer is not null,
-            FollowUp = found ? AskFollowUp.None : AskFollowUp.Open,
+            AiDeclined = declined, FollowUp = found && !declined ? AskFollowUp.None : AskFollowUp.Open,
         };
         db.AskLogs.Add(log);
         await db.SaveChangesAsync(ct);
-        return Results.Ok(new AskResultDto(log.Id, question, found, faqs, docs, related, answer, note));
+        return Results.Ok(new AskResultDto(log.Id, question, found, faqs, docs, related, answer, note, declined));
     }
 
     private static AskHitDto ToDto(KbHit h, DateOnly today) =>
         new(h.Id, h.Kind, h.Title, h.Category, h.Snippet, h.Body, Math.Round(h.Coverage, 2), h.ReviewBy, KnowledgeEndpoints.IsStale(KbStatus.Published, h.ReviewBy, today));
 
-    /// <summary>평가: "부족함"이면 관리자 확인 목록에 올라갑니다. 본인 질문만.</summary>
-    private static async Task<IResult> Feedback(int id, AskFeedbackRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct)
+    /// <summary>
+    /// 평가: "부족함"이면 관리자 확인 목록에 올라갑니다. 본인 질문만.
+    /// 맞는 답(Correction)을 적으면 자동 정리가 곧 FAQ 초안을 만들고, 관리자가 승인하면 다음부터 그 답이 나옵니다.
+    /// </summary>
+    private static async Task<IResult> Feedback(int id, AskFeedbackRequest req, ClaimsPrincipal user, AppDbContext db, KbCurator curator, CancellationToken ct)
     {
         var me = AuthEndpoints.StaffId(user);
         var log = await db.AskLogs.FirstOrDefaultAsync(a => a.Id == id && a.StaffId == me, ct);
         if (log is null) return Problems.NotFound("질문 기록을 찾을 수 없습니다.");
+        var correction = KbText.MaskPii((req.Correction ?? "").Trim());
+        if (correction.Length > KbLimits.Correction) return Problems.Validation("correction", $"맞는 답은 {KbLimits.Correction}자까지 쓸 수 있습니다.");
+        if (correction.Length > 0 && req.Helpful) return Problems.Validation("correction", "정정은 \"부족함\"과 함께 보내 주세요.");
+        if (correction.Length > 0 && log.DraftItemId is not null) return Problems.Conflict("이미 정정을 보낸 질문입니다. 관리자가 확인 중입니다.");
         log.Helpful = req.Helpful;
-        if (!req.Helpful && log.FollowUp == AskFollowUp.None) log.FollowUp = AskFollowUp.Open;
-        else if (req.Helpful && log.Found && log.FollowUp == AskFollowUp.Open) log.FollowUp = AskFollowUp.None; // 마음을 바꿈
+        if (!req.Helpful && log.FollowUp is AskFollowUp.None or AskFollowUp.Dismissed) log.FollowUp = AskFollowUp.Open;
+        else if (req.Helpful && log.Found && !log.AiDeclined && log.FollowUp == AskFollowUp.Open) log.FollowUp = AskFollowUp.None; // 마음을 바꿈
+        if (correction.Length > 0)
+        {
+            log.Correction = correction;
+            log.FollowUp = AskFollowUp.Open;
+        }
         await db.SaveChangesAsync(ct);
+        if (correction.Length > 0) curator.RequestCorrections();
         return Results.NoContent();
     }
 

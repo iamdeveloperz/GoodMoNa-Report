@@ -321,6 +321,46 @@ export interface KbOverview {
   stale: number;
   openQuestions: number;
   assistant: AssistantStatus;
+  suggestions: number;
+  watchPages: number;
+  lastRun: KbCurateResult | null;
+}
+
+export interface KbCurateResult {
+  at: string;
+  full: boolean;
+  drafts: number;
+  keywordSuggestions: number;
+  pagesChecked: number;
+  siteChanges: number;
+  skipped: number;
+  errors: string[];
+}
+
+export type KbSuggestionKind = "Keywords" | "SiteChange";
+
+export interface KbSuggestion {
+  id: number;
+  kind: KbSuggestionKind;
+  status: "Pending" | "Accepted" | "Dismissed";
+  itemId: number | null;
+  itemTitle: string | null;
+  itemBody: string | null;
+  title: string;
+  detail: string;
+  phrases: string[];
+  proposedBody: string | null;
+  sourceUrl: string | null;
+  createdAt: string;
+}
+
+export interface KbWatchPage {
+  id: number;
+  url: string;
+  lastCheckedAt: string | null;
+  lastChangedAt: string | null;
+  lastError: string | null;
+  lines: number;
 }
 
 export interface AskHit {
@@ -344,6 +384,7 @@ export interface AskResult {
   related: AskHit[];
   answer: { text: string; sources: { n: number; itemId: number; title: string }[] } | null;
   note: string | null;
+  aiDeclined: boolean;
 }
 
 export interface AskLog {
@@ -360,6 +401,9 @@ export interface AskLog {
   topItemTitle: string | null;
   topCoverage: number;
   resolvedItemId: number | null;
+  aiDeclined: boolean;
+  correction: string | null;
+  draftItemId: number | null;
 }
 
 export const KB_KIND: Record<KbKind, string> = { Faq: "FAQ", Doc: "문서" };
