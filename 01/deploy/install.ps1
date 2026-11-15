@@ -20,6 +20,8 @@ param(
     [string]$ModelPath = "C:\GoodMoNa\models\ggml-large-v3-turbo.bin",
     # 02 인트라넷(로그인·출입증 발급) 서버 포트. 터널이 로그인 관련 경로를 여기로 보내고, 01은 여기서 서명 공개키를 받습니다.
     [int]$IntranetPort = 5002,
+    # 03 쇼츠 제작 서버 포트. 터널이 /shorts · /shorts-assets · /api/shorts/* 를 여기로 보냅니다.
+    [int]$ShortsPort = 5003,
     [switch]$SkipTunnel
 )
 
@@ -31,7 +33,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     Write-Host "관리자 권한이 필요합니다. UAC 창에서 '예'를 눌러 주세요." -ForegroundColor Yellow
     $argList = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-NoExit", "-File", "`"$PSCommandPath`"",
         "-Hostname", $Hostname, "-TunnelName", $TunnelName, "-InstallRoot", "`"$InstallRoot`"", "-Port", $Port, "-ModelPath", "`"$ModelPath`"",
-        "-IntranetPort", $IntranetPort)
+        "-IntranetPort", $IntranetPort, "-ShortsPort", $ShortsPort)
     if ($SkipTunnel) { $argList += "-SkipTunnel" }
     Start-Process powershell.exe -Verb RunAs -ArgumentList $argList
     return
@@ -156,6 +158,8 @@ elseif (-not (Test-Path $credDst)) { Fail "터널 자격 증명($id.json)을 찾
 $config = Join-Path $tunnelDir "config.yml"
 # 같은 주소를 경로로 나눕니다: 로그인·직원 관리(02 인트라넷) / 나머지 진료 화면(01). 위에서부터 먼저 맞는 규칙을 씁니다.
 $intranetPaths = '^/(login|signup|intranet|intranet-assets|\.well-known|api/auth|api/admin|api/intranet)(/.*)?$'
+# 03 쇼츠 제작(촬영본 올리기·검토·승인). 03 화면 파일은 /assets(01)와 겹치지 않게 /shorts-assets에 있습니다.
+$shortsPaths = '^/(shorts|shorts-assets|api/shorts)(/.*)?$'
 @"
 tunnel: $id
 credentials-file: '$credDst'
@@ -165,6 +169,9 @@ ingress:
   - hostname: $Hostname
     path: '$intranetPaths'
     service: http://localhost:$IntranetPort
+  - hostname: $Hostname
+    path: '$shortsPaths'
+    service: http://localhost:$ShortsPort
   - hostname: $Hostname
     service: http://localhost:$Port
   - service: http_status:404

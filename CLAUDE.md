@@ -8,8 +8,8 @@ GoodMoNa 병원 경과 보고 시스템(PMS) 과제 리포입니다. 시스템 �
 | --- | --- | --- |
 | `01/` | 보고 흐름 + 원장 결과 확인 + 사진 확대·비교 + 이전 기록 CSV 가져오기 + CRM 연동 방안(설계만). 보고서는 `01/docs/` (설계·구현·결과·CRM) | 완료, https://goodmona.hsdevs.com 운영 중 |
 | `02/` | 2번 과제 사내 인트라넷 — 직원 가입(승인 필수)·로그인·직원 관리, 공지(필독·읽음 확인)·연차(근로기준법 §60, 입사일 기준)·출퇴근(병원 네트워크/입구 QR)·직원 주차·주소록·설정·CS 안내 도우미(LLM 위키: 자료 추출·승인·검색·학습 고리, AI 답변은 Claude API/로컬 모델 선택, 설계 `02/docs/cs-assistant-design.md`). 01의 간호사·원장 권한도 이 로그인으로 나눔. 품의·메신저는 예정 | 진행 중 |
-| `03/` | 3번 과제 쇼츠 문제 분석·해결방안(`03/docs/shorts-analysis.md`) + 편집자 없는 쇼츠 제작 자동화 설계(`03/docs/shorts-automation-design.md`, 반자동: 초안 자동·승인은 사람, 미구현) + 공개 데이터 재현용 콘솔 스크립트(`03/tools/collect-shorts.js`) | 분석·설계 완료 |
-| `deploy/install-all.ps1` | 02 → 01(+터널) 순서로 한 번에 배포 | |
+| `03/` | 3번 과제 쇼츠 문제 분석·해결방안(`03/docs/shorts-analysis.md`) + 편집자 없는 쇼츠 제작 자동화(설계 `03/docs/shorts-automation-design.md`). **1단계 구현**: 촬영본 → ffmpeg 무음 컷 + Whisper 자막 + 제목·훅 초안 + 표현 점검 → 검토 화면 → 원장 승인 → 완성본(`/shorts`). 초안은 기계, 공개 승인은 원장 — 이 원칙을 깨지 마세요. 운영: 서비스 GoodMoNa03(5003), 터널이 `/shorts`·`/shorts-assets`·`/api/shorts/*`를 03으로(03에 새 경로 접두어를 쓰면 `01/deploy/install.ps1`의 `$shortsPaths`와 `03/web/vite.config.ts`에 함께) | 1단계 운영 |
+| `deploy/install-all.ps1` | 02 → 03 → 01(+터널) 순서로 한 번에 배포 | |
 | `docs/` | 리포 전체 설계 문서 | |
 
 각 과제 폴더는 독립된 .NET 솔루션 + Vite 웹입니다. 과제끼리 코드를 공유하지 않습니다(필요해지면 그때 공통 라이브러리로 뺌).
@@ -18,9 +18,9 @@ GoodMoNa 병원 경과 보고 시스템(PMS) 과제 리포입니다. 시스템 �
 
 ```powershell
 cd web; npm install; npm run build; cd ..     # 화면 빌드 → 서버 wwwroot
-dotnet test                                   # 통합 테스트 (01: 54개, 02: 80개)
-dotnet run --project src/<서버 프로젝트>        # 개발 서버 (01: 5011, 02: 5012)
-cd web; npm run dev                           # 화면 개발 (01: 5173, 02: 5174)
+dotnet test                                   # 통합 테스트 (01: 54개, 02: 80개, 03: 52개 + 실제 ffmpeg·Whisper·전체 흐름 시험 3개)
+dotnet run --project src/<서버 프로젝트>        # 개발 서버 (01: 5011, 02: 5012, 03: 5013)
+cd web; npm run dev                           # 화면 개발 (01: 5173, 02: 5174, 03: 5175)
 dotnet ef migrations add <이름> --project src/<서버 프로젝트>   # dotnet tool restore 먼저
 ```
 
@@ -28,7 +28,7 @@ dotnet ef migrations add <이름> --project src/<서버 프로젝트>   # dotnet
 
 - **사용자와는 한국어로** 이야기합니다. 화면 문구·오류 메시지·주석도 한국어.
 - **비밀값을 커밋하지 않습니다**: `cert.pem`, 터널 자격 증명 `*.json`(cloudflared), API 키. 리포는 공개입니다.
-- **배포(`deploy/install-all.ps1` = 02 → 01)는 관리자 권한이 필요**합니다. 실행하면 UAC 창이 뜨므로 사용자에게 "예"를 눌러 달라고 알립니다. 운영 중인 서비스를 멈추므로 사용자가 요청할 때만.
+- **배포(`deploy/install-all.ps1` = 02 → 03 → 01)는 관리자 권한이 필요**합니다. 실행하면 UAC 창이 뜨므로 사용자에게 "예"를 눌러 달라고 알립니다. 운영 중인 서비스를 멈추므로 사용자가 요청할 때만.
 - 사용자가 직접 셸 명령을 돌릴 때는 `! <명령>` 형식(bash 문법)으로 안내합니다.
 - 커밋 메시지는 `01: …` / `02: …`처럼 과제 번호로 시작하고, 끝에 Co-Authored-By와 Claude-Session 줄을 붙입니다.
 - 기능을 바꾸면 테스트를 함께 고치고, 해당 과제 README의 표(주소·API·설정)를 갱신합니다.

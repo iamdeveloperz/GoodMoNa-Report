@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafaf7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230e0e0e%27/%3E%3Crect x=%276%27 y=%273%27 width=%274%27 height=%2710%27 fill=%27%23d7261e%27/%3E%3C/svg%3E">
+  <title>쇼츠 검토 — GoodMoNa</title>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="/shorts">GoodMoNa<span>쇼츠 제작</span></a>
+      <nav class="nav" aria-label="화면">
+        <a href="/shorts" aria-current="page">쇼츠</a>
+        <a href="/intranet">인트라넷</a>
+      </nav>
+      <span class="who" id="who"></span>
+    </div>
+  </header>
+
+  <main class="page review" id="page">
+    <div class="review-head">
+      <a class="textbtn" href="/shorts">← 목록</a>
+      <h1 id="code">불러오는 중</h1>
+      <span class="state" id="state"></span>
+      <span class="stage-now" id="stageNow"></span>
+      <span class="grow"></span>
+      <span class="meta" id="savedBy"></span>
+    </div>
+    <p class="err" id="error" hidden></p>
+
+    <div class="review-grid">
+      <aside class="player">
+        <div class="phone" id="phone"><span class="meta" id="noPreview">미리보기를 만드는 중입니다</span><video id="video" controls playsinline preload="metadata" hidden></video></div>
+        <dl class="facts" id="facts"></dl>
+        <p class="meta" id="aiNote" hidden></p>
+      </aside>
+
+      <div class="panels">
+        <section class="step">
+          <div class="section-head"><span class="index">01</span><h2>제목 · 훅 · 설명</h2></div>
+          <div class="field"><span class="label">제목 (유튜브 제목)</span><input type="text" id="title" maxlength="100"></div>
+          <div class="chips" id="titleChips"></div>
+          <div class="field"><span class="label">훅 (화면 위쪽 띠, 24자 이내 · 바꾸면 미리보기 다시 만듦)</span><input type="text" id="hook" maxlength="24"></div>
+          <div class="chips" id="hookChips"></div>
+          <div class="field"><span class="label">설명란</span><textarea id="description" rows="5"></textarea></div>
+          <div class="field"><span class="label">해시태그 (띄어쓰기로 구분)</span><input type="text" id="hashtags"></div>
+          <label class="check"><input type="checkbox" id="hasPatient"> 환자가 나오는 영상입니다 (얼굴·두피·사례)</label>
+          <label class="check" id="consentRow"><input type="checkbox" id="consent"> 출연 동의서를 확인했습니다</label>
+        </section>
+
+        <section class="step">
+          <div class="section-head"><span class="index">02</span><h2>자막</h2><span class="grow"></span><span class="meta">원본 기준 시각 · 글자만 고칩니다</span></div>
+          <ol class="cues" id="cues"></ol>
+        </section>
+
+        <section class="step">
+          <div class="section-head"><span class="index">03</span><h2>자른 곳 (무음)</h2><span class="grow"></span><span class="meta" id="cutSummary"></span></div>
+          <ul class="cuts" id="cuts"></ul>
+        </section>
+
+        <section class="step">
+          <div class="section-head"><span class="index">04</span><h2>표현 점검</h2><span class="grow"></span><span class="meta">걸렸다고 위반은 아닙니다 — 고치거나, 문제없는 이유를 적어 해소</span></div>
+          <ul class="findings" id="findings"></ul>
+        </section>
+
+        <section class="step">
+          <div class="section-head"><span class="index">05</span><h2>승인 · 게시</h2></div>
+          <ul class="blockers" id="blockers"></ul>
+          <div class="actions" id="actions"></div>
+          <div class="publish" id="publish" hidden>
+            <p class="small">완성본을 받아 YouTube Studio에서 올린 뒤, 주소를 남겨 주세요. <b>관련 동영상</b>(같은 주제 롱폼)도 Studio에서 연결해 주세요 — 쇼츠에서 상담까지 가는 유일한 클릭 경로입니다.</p>
+            <div class="field"><span class="label">유튜브 주소</span><input type="text" id="ytUrl" placeholder="https://youtube.com/shorts/…"></div>
+            <label class="check"><input type="checkbox" id="related"> 관련 동영상(롱폼)을 연결했습니다</label>
+            <div><button class="btn primary" id="publishBtn" type="button">게시 기록 남기기</button></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <div class="savebar" id="savebar" hidden>
+    <span>저장하지 않은 수정이 있습니다</span>
+    <button class="btn" id="discard" type="button">되돌리기</button>
+    <button class="btn primary" id="save" type="button">저장</button>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/review/main.ts"></script>
+</body>
+</html>

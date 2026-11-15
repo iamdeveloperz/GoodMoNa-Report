@@ -1,0 +1,30 @@
+/* 03 쇼츠 화면 공용 — base.css 토큰만 씁니다(무채색 + --accent, 그림자·둥근 모서리·그라데이션 없음). */
+
+.page { max-width: 1320px; margin: 0 auto; padding: var(--s6) var(--s5) var(--s8); display: flex; flex-direction: column; gap: var(--s7); }
+.step { display: flex; flex-direction: column; gap: var(--s4); }
+code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .92em; background: var(--tint); padding: 1px 5px; }
+
+/* 설정 안내(ffmpeg·Whisper·AI) */
+.notices { display: flex; flex-direction: column; gap: var(--s2); }
+.notice { border-left: 3px solid var(--ink); padding: var(--s2) var(--s4); font-size: var(--t-small); background: var(--sheet); }
+.notice.bad { border-color: var(--accent); }
+.notice b { margin-right: var(--s2); }
+
+/* 상태 표시: 색이 아니라 모양으로 (진행 중 ◌ · 검토 □ · 준비 ■ · 실패 ■빨강) */
+.state { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-small); font-weight: 600; white-space: nowrap; }
+.state::before { content: ""; width: 10px; height: 10px; border: 1.5px solid var(--ink); flex: none; }
+.state.Processing::before, .state.Rendering::before, .state.Approved::before { border-style: dashed; border-color: var(--ink-3); }
+.state.Processing, .state.Rendering, .state.Approved { color: var(--ink-2); }
+.state.Ready::before, .state.Published::before { background: var(--ink); }
+.state.Rejected { color: var(--ink-3); }
+.state.Rejected::before { border-color: var(--ink-3); }
+.state.Failed { color: var(--accent); }
+.state.Failed::before { background: var(--accent); border-color: var(--accent); }
+
+.flag { font-size: var(--t-meta); font-weight: 700; color: var(--accent); white-space: nowrap; }
+.err { color: var(--accent); font-weight: 600; font-size: var(--t-small); }
+.btn.compact { min-height: 36px; padding: 0 var(--s4); }
+
+@media (max-width: 760px) {
+  .page { padding: var(--s5) var(--s4) var(--s7); gap: var(--s6); }
+}

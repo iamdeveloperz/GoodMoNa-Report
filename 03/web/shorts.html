@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafaf7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230e0e0e%27/%3E%3Crect x=%276%27 y=%273%27 width=%274%27 height=%2710%27 fill=%27%23d7261e%27/%3E%3C/svg%3E">
+  <title>쇼츠 제작 — GoodMoNa</title>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="/shorts">GoodMoNa<span>쇼츠 제작</span></a>
+      <nav class="nav" aria-label="화면">
+        <a href="/shorts" aria-current="page">쇼츠</a>
+        <a href="/intranet">인트라넷</a>
+      </nav>
+      <span class="who" id="who"></span>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="notices" id="notices" hidden></div>
+
+    <section class="step">
+      <div class="section-head"><span class="index">01</span><h2>촬영본 올리기</h2><span class="grow"></span><span class="meta" id="limit"></span></div>
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept="video/*,.mp4,.mov,.m4v,.webm,.mkv">
+        <b>원장 세로 촬영본을 끌어다 놓거나 눌러서 고르세요</b>
+        <span class="meta">쇼츠 1편 분량 · 외부 주소로는 95MB까지(큰 파일은 서버 PC에서 localhost:5003) · 올리면 무음 자르기 · 자막 · 제목 초안 · 표현 점검 · 미리보기까지 자동으로 만듭니다</span>
+      </label>
+      <div class="uploading" id="uploading" hidden>
+        <div class="row-between"><span id="uploadName"></span><span class="meta" id="uploadPct"></span></div>
+        <div class="bar"><i id="uploadBar"></i></div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="section-head"><span class="index">02</span><h2>초안</h2><span class="grow"></span><span class="meta" id="count"></span></div>
+      <div class="table-wrap">
+        <table class="drafts">
+          <thead>
+            <tr><th>코드</th><th>제목</th><th>상태</th><th>길이</th><th>점검</th><th>올린 사람</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p class="empty meta" id="empty" hidden>아직 올린 촬영본이 없습니다.</p>
+    </section>
+
+    <details class="step titles">
+      <summary><span class="index">03</span><b>기존 쇼츠 제목 가져오기</b> <span class="meta" id="titleCount"></span></summary>
+      <p class="small muted">반복 제목 경고에 씁니다. 채널 쇼츠 탭에서 <code>03/tools/collect-shorts.js</code>를 실행하면 목록이 클립보드에 복사됩니다. 여기에 붙여 넣으세요(제목만 한 줄에 하나씩도 됨).</p>
+      <textarea id="titlesText" rows="5" placeholder="순번&#9;영상ID&#9;제목&#9;조회수"></textarea>
+      <div><button class="btn compact" id="titlesImport" type="button">가져오기</button></div>
+    </details>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/shorts/main.ts"></script>
+</body>
+</html>

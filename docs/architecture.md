@@ -121,16 +121,16 @@ Patient (이름+생년월일 유일)
 | --- | --- | --- | --- |
 | 개발 서버 | http://localhost:5011 | http://localhost:5012 | http://localhost:5013 |
 | Vite 개발 화면 | http://localhost:5173 (→ 5011, 로그인 경로는 5012로 프록시) | http://localhost:5174 (→ 5012 프록시) | http://localhost:5175 (→ 5013, 로그인 경로는 5012) |
-| 운영 서버 | localhost:5001, 서비스 `GoodMoNa01` | localhost:5002, 서비스 `GoodMoNa02` | localhost:5003 예정(서비스·터널 경로는 아직 없음) |
-| 설치 폴더 | `C:\GoodMoNa\01\{app,data,cloudflared}` | `C:\GoodMoNa\02\{app,data}` (data\keys에 서명 개인키) | 개발: `%LOCALAPPDATA%\GoodMoNa03` (DB·영상) |
-| 외부 주소 | https://goodmona.hsdevs.com | 같은 주소, 로그인·인트라넷 경로만 (터널 경로 규칙) | 아직 없음 (터널 본문 100MB 제한 → 내부망 업로드 검토) |
+| 운영 서버 | localhost:5001, 서비스 `GoodMoNa01` | localhost:5002, 서비스 `GoodMoNa02` | localhost:5003, 서비스 `GoodMoNa03` |
+| 설치 폴더 | `C:\GoodMoNa\01\{app,data,cloudflared}` | `C:\GoodMoNa\02\{app,data}` (data\keys에 서명 개인키) | `C:\GoodMoNa\03\{app,data,tools}` (tools에 ffmpeg) · 개발: `%LOCALAPPDATA%\GoodMoNa03` |
+| 외부 주소 | https://goodmona.hsdevs.com | 같은 주소, 로그인·인트라넷 경로만 (터널 경로 규칙) | 같은 주소 `/shorts` (터널 경로 규칙). 업로드 95MB까지 — 큰 촬영본은 서버 PC localhost:5003 |
 | Whisper 모델 | `C:\GoodMoNa\models` (공용) | 같은 파일을 쓸 수 있음 | 같은 파일 (단어 단위 시간으로 자막) |
 
 ## 9. 보안 · 운영 현황
 
 - **로그인 (02가 발급, 01은 확인만)**: 직원 DB는 02 인트라넷에만 있습니다. 가입 신청 → 대표원장·관리자 승인 → 로그인. 02가 RS256 JWT 출입증(15분, sub·name·role)을 gm_access 쿠키로 주고, 01은 02의 `/.well-known/jwks.json` 공개키로 서명만 확인해 직무별로 막습니다. 갱신 토큰(14일)은 회전하고 재사용되면 그 직원의 세션을 모두 끊습니다. 퇴사·직무 변경은 늦어도 15분 안에 01·02 모두 반영. 자세한 표는 `02/README.md`.
 - 01 권한: 보고 = 대표원장·원장·간호사, 결과 확인·녹음 = 대표원장·원장, 가져오기 = 대표원장·관리자. 폰 촬영 `/capture/*`는 QR 토큰이 권한.
-- 같은 주소(goodmona.hsdevs.com)를 Cloudflare 터널이 경로로 나눕니다: `/login`·`/signup`·`/intranet*`·`/api/auth/*`·`/api/admin/*`·`/api/intranet/*`·`/.well-known/*` → 02(5002), 나머지 → 01(5001). 그래서 쿠키 하나로 양쪽에 로그인됩니다.
+- 같은 주소(goodmona.hsdevs.com)를 Cloudflare 터널이 경로로 나눕니다: `/login`·`/signup`·`/intranet*`·`/api/auth/*`·`/api/admin/*`·`/api/intranet/*`·`/.well-known/*` → 02(5002), `/shorts`·`/shorts-assets`·`/api/shorts/*` → 03(5003), 나머지 → 01(5001). 그래서 쿠키 하나로 양쪽에 로그인됩니다.
 - 가져오기 API는 `Cf-Connecting-IP` 헤더(Cloudflare 경유 표시)가 있으면 기본 403.
 - 폰 화면에는 가린 이름(김\*수)만 보냄. 사진 응답은 `Cache-Control: private`.
 - 백업 없음: `C:\GoodMoNa\01\data`·`C:\GoodMoNa\02\data`를 주기적으로 다른 곳에 복사해야 함.
