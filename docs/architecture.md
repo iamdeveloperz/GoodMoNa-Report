@@ -3,6 +3,8 @@
 GoodMoNa 병원 경과 보고 시스템(PMS)의 서버·언어·프레임워크·구조를 한곳에 모은 문서입니다.
 이 리포에서 작업을 이어받는 사람(또는 에이전트)이 먼저 읽도록 썼습니다. 과제별 상세 사용법은 각 폴더의 README에 있습니다.
 
+> 이 문서는 **지금(과제 시연) 구조**입니다. 실제 병원 운영으로 옮길 때의 구성(NAS · 맥미니 · 클라우드, 망 분리, 백업, 배포)은 [운영 구현 설계안](implementation-plan.md)에, 그 구성을 고른 이유와 대안 비교(클라우드 · 맥미니 · NAS · EMR · CRM · 그룹웨어)는 [서버·인프라 대안 비교](infrastructure-options.md)에 있습니다.
+
 ## 1. 한눈에
 
 ```
@@ -115,14 +117,14 @@ Patient (이름+생년월일 유일)
 
 ## 8. 포트 · 경로 · 서비스
 
-| 항목 | 01 | 02 |
-| --- | --- | --- |
-| 개발 서버 | http://localhost:5011 | http://localhost:5012 |
-| Vite 개발 화면 | http://localhost:5173 (→ 5011, 로그인 경로는 5012로 프록시) | http://localhost:5174 (→ 5012 프록시) |
-| 운영 서버 | localhost:5001, 서비스 `GoodMoNa01` | localhost:5002, 서비스 `GoodMoNa02` |
-| 설치 폴더 | `C:\GoodMoNa\01\{app,data,cloudflared}` | `C:\GoodMoNa\02\{app,data}` (data\keys에 서명 개인키) |
-| 외부 주소 | https://goodmona.hsdevs.com | 같은 주소, 로그인·인트라넷 경로만 (터널 경로 규칙) |
-| Whisper 모델 | `C:\GoodMoNa\models` (공용) | 같은 파일을 쓸 수 있음 |
+| 항목 | 01 | 02 | 03 (쇼츠 제작) |
+| --- | --- | --- | --- |
+| 개발 서버 | http://localhost:5011 | http://localhost:5012 | http://localhost:5013 |
+| Vite 개발 화면 | http://localhost:5173 (→ 5011, 로그인 경로는 5012로 프록시) | http://localhost:5174 (→ 5012 프록시) | http://localhost:5175 (→ 5013, 로그인 경로는 5012) |
+| 운영 서버 | localhost:5001, 서비스 `GoodMoNa01` | localhost:5002, 서비스 `GoodMoNa02` | localhost:5003 예정(서비스·터널 경로는 아직 없음) |
+| 설치 폴더 | `C:\GoodMoNa\01\{app,data,cloudflared}` | `C:\GoodMoNa\02\{app,data}` (data\keys에 서명 개인키) | 개발: `%LOCALAPPDATA%\GoodMoNa03` (DB·영상) |
+| 외부 주소 | https://goodmona.hsdevs.com | 같은 주소, 로그인·인트라넷 경로만 (터널 경로 규칙) | 아직 없음 (터널 본문 100MB 제한 → 내부망 업로드 검토) |
+| Whisper 모델 | `C:\GoodMoNa\models` (공용) | 같은 파일을 쓸 수 있음 | 같은 파일 (단어 단위 시간으로 자막) |
 
 ## 9. 보안 · 운영 현황
 
