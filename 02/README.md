@@ -150,7 +150,7 @@ src/GoodMoNa02.Server
   Knowledge/              KbExtractor(자료 추출 규칙) · KbText(2-gram·개인정보 가림) · KbIndex(BM25 메모리 색인) · Assistant(AI 답변: 꺼짐/Ollama, 지시문, 근거 검사) · ClaudeAnswerWriter(Claude API) · KbCurator(자동 정리: 정정 초안·표현 제안·홈페이지 확인)
   Data/                   Staff · StaffSession · IntranetEntities(공지·연차·휴무일·설정·출퇴근·주차) · KnowledgeEntities(CS 자료·가져오기·질문 기록) · AppDbContext · Migrations/
   Contracts/              DTO · StaffInput(입력 검사)
-tests/GoodMoNa02.Server.Tests   통합 테스트 79개: 로그인(16) · 연차 규칙(24, 순수 계산) · 연차 흐름(10) · 출퇴근(4) · 공지·주소록·홈·주차·휴무일·보호(7) · CS 도우미(18)
+tests/GoodMoNa02.Server.Tests   통합 테스트 80개: 로그인(16) · 연차 규칙(24, 순수 계산) · 연차 흐름(10) · 출퇴근(4) · 공지·주소록·홈·주차·휴무일·보호(7) · CS 도우미(19)
 web/                      login · signup · intranet · notices · leave · attendance · kiosk · parking · people · ask · knowledge · intranet-admin · settings
                           (정적 파일은 /intranet-assets/ — 01의 /assets/와 겹치지 않게. 메뉴는 src/shared/chrome.ts 한 곳)
 deploy/install.ps1        서비스 GoodMoNa02 (localhost:5002)

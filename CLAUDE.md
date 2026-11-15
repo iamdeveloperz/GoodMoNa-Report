@@ -18,7 +18,7 @@ GoodMoNa 병원 경과 보고 시스템(PMS) 과제 리포입니다. 시스템 �
 
 ```powershell
 cd web; npm install; npm run build; cd ..     # 화면 빌드 → 서버 wwwroot
-dotnet test                                   # 통합 테스트 (01: 54개, 02: 79개)
+dotnet test                                   # 통합 테스트 (01: 54개, 02: 80개)
 dotnet run --project src/<서버 프로젝트>        # 개발 서버 (01: 5011, 02: 5012)
 cd web; npm run dev                           # 화면 개발 (01: 5173, 02: 5174)
 dotnet ef migrations add <이름> --project src/<서버 프로젝트>   # dotnet tool restore 먼저

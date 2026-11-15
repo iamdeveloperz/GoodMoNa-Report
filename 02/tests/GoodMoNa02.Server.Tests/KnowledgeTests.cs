@@ -436,6 +436,23 @@ public sealed class KnowledgeTests : IDisposable
         Assert.Equal(s.ItemId, again.Docs.First().Id);
     }
 
+    [Fact]
+    public async Task 이미_붙여_둔_표현이면_빈_제안_없이_질문을_처리한다()
+    {
+        var writer = new FakeWriter(_ => "자료에 없음", (system, user) => system == CuratePrompt.Pick && user.Contains("[1] 진료 안내 · 주차") ? "1" : "0");
+        var nurse = await WithAnswersAsync(writer);
+        var owner = await _app.OwnerAsync();
+        var first = await nurse.Post("/api/intranet/ask", new { question = "지하에 차 대도 돼요?" }).Ok<AskResultDto>();
+        await nurse.Post("/api/intranet/ask", new { question = "지하에 차 대도 돼요?" }).Ok<AskResultDto>(); // 붙이기 전에 한 번 더 물음
+        var parking = (await owner.Get<List<KbItemDto>>("/api/intranet/kb/items?status=Published")).Single(i => i.Title == "진료 안내 · 주차");
+        await owner.Post($"/api/intranet/kb/questions/{first.LogId}/attach", new { itemId = parking.Id }).Ok<KbItemDto>();
+
+        var run = await owner.Post("/api/intranet/kb/curate").Ok<KbCurateResultDto>();
+        Assert.Equal(0, run.KeywordSuggestions);
+        Assert.Empty(await owner.Get<List<KbSuggestionDto>>("/api/intranet/kb/suggestions"));
+        Assert.Empty(await owner.Get<List<AskLogDto>>("/api/intranet/kb/questions"));
+    }
+
     /* ---------- ③ 병원 홈페이지 변경 → 자료 고치기 제안 ---------- */
 
     private sealed class FakeSite : HttpMessageHandler

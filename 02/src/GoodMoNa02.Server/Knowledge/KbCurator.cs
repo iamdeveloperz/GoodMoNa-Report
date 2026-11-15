@@ -146,6 +146,12 @@ public sealed partial class KbCurator(
             var item = await db.KbItems.FirstAsync(i => i.Id == itemId, ct);
             var phrases = group.Select(g => Phrase(g.Question)!).Distinct()
                 .Where(p => !item.Keywords.Contains(p, StringComparison.Ordinal)).ToList();
+            if (phrases.Count == 0)
+            {
+                // 관리자가 이미 이 표현을 붙여 둔 자료 → 새 제안 없이 그 자료로 처리됨
+                foreach (var g in group) (g.FollowUp, g.ResolvedItemId) = (AskFollowUp.Resolved, itemId);
+                continue;
+            }
             var pending = await db.KbSuggestions.FirstOrDefaultAsync(
                 s => s.Status == KbSuggestionStatus.Pending && s.Kind == KbSuggestionKind.Keywords && s.ItemId == itemId, ct);
             var ids = group.Select(g => g.Id.ToString()).ToList();
