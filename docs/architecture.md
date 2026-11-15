@@ -82,7 +82,7 @@ Patient (이름+생년월일 유일)
 2. **결과 확인(원장, `/director`)**: 날짜별 받은 보고(새 보고는 알림음) → 전후 사진(확대 모드 · 5:5 비교 모드) → 소견 녹음(브라우저에서 16kHz 모노 WAV로 바꿔 업로드, 202) → `TranscriptionQueue` → `TranscriptionWorker`가 Whisper 변환 → `NoteUpdated` 푸시. 서버 재시작 시 대기 중 녹음 자동 재처리, 시작 시 모델 예열.
 3. **이전 기록 가져오기(`/import`, 서버 PC에서만)**: 사진을 가져오기 폴더에 올림/복사 → CSV 검사(엑셀 행 번호로 오류) → 백그라운드에서 트랜잭션 하나로 저장(실패 시 DB·복사 사진 모두 되돌림). 중복은 이름+생년월일 / 환자+날짜 / SHA-256으로 막음.
 4. **인트라넷(02, `/intranet/*`)**: 홈(필독 공지·오늘 출퇴근·내 연차·오늘 휴가자·처리할 일) · 공지 · 연차(신청 → 승인, 근로기준법 §60 자동 계산, 팀 달력) · 출퇴근(병원 공인 IP 또는 30초마다 바뀌는 입구 QR) · 직원 주차(차량 등록 → 신청 → 주차면 배정, 번호 뒷자리 조회) · 주소록 · 설정. 설계는 `02/docs/intranet-design.md`.
-5. **CS 안내 도우미(02, `/intranet/ask` · `/intranet/knowledge`)**: 자료 가져오기(규칙 추출: `#` 제목 → 문서, `Q:`/`A:` → FAQ) → 초안 → 관리자 승인 → 승인된 자료만 2-gram BM25 검색(서버 메모리 색인) → (켜져 있으면) 서버 PC의 Ollama가 찾은 자료만 근거로 답하고 서버가 근거 번호를 검사. 못 찾은 질문·"부족함"은 관리자에게 모여 표현 추가·FAQ로 만들기(학습 고리). 설계는 `02/docs/cs-assistant-design.md`.
+5. **CS 안내 도우미(02, `/intranet/ask` · `/intranet/knowledge`)**: 자료 가져오기(규칙 추출: `#` 제목 → 문서, `Q:`/`A:` → FAQ) → 초안 → 관리자 승인 → 승인된 자료만 2-gram BM25 검색(서버 메모리 색인) → (켜져 있으면) Claude API 또는 서버 PC의 Ollama가 찾은 자료만 근거로 답하고 서버가 근거 번호를 검사. 못 찾은 질문·"부족함"은 관리자에게 모여 표현 추가·FAQ로 만들기(학습 고리). 설계는 `02/docs/cs-assistant-design.md`.
 6. **CRM 연동**: 설계만. CRM 정보가 없어 구현 가능안(CRM 무관 공통 기반 / 유형별 어댑터)과 대안으로 나눔 (`01/docs/crm-integration.md`). 1번 과제의 설계·구현·결과 보고서는 `01/docs/`.
 
 ## 6. API 요약
@@ -132,7 +132,7 @@ Patient (이름+생년월일 유일)
 - 가져오기 API는 `Cf-Connecting-IP` 헤더(Cloudflare 경유 표시)가 있으면 기본 403.
 - 폰 화면에는 가린 이름(김\*수)만 보냄. 사진 응답은 `Cache-Control: private`.
 - 백업 없음: `C:\GoodMoNa\01\data`·`C:\GoodMoNa\02\data`를 주기적으로 다른 곳에 복사해야 함.
-- 02 CS 안내 도우미: 질문은 저장 전에 전화번호·주민번호를 가림. AI 답변은 기본 꺼짐이고, 켜도 서버 PC의 localhost Ollama만 부름(외부 전송 없음).
+- 02 CS 안내 도우미: 질문은 저장 전에 전화번호·주민번호를 가림. AI 답변은 설정으로 Claude API(가린 질문 + 찾은 자료 4건이 Anthropic으로 전송) 또는 서버 PC의 localhost Ollama(외부 전송 없음). API 키는 `C:\GoodMoNa\02\data\appsettings.local.json`(SYSTEM·관리자만 읽기)에만.
 - 02 인트라넷 권한: 공지 쓰기·휴가 승인·출퇴근 수정·주차 배정·설정·CS 자료 가져오기·승인 = 대표원장·관리자, 나머지(공지 읽기·연차 신청·출퇴근·주차 신청·주소록)는 로그인한 직원 모두. 업무 API는 모두 `/api/intranet/*`.
 - 비밀값(`cert.pem`, 터널 자격 증명 JSON)은 `C:\GoodMoNa\…\cloudflared`와 `%USERPROFILE%\.cloudflared`에만 두고 **절대 커밋하지 않음**(리포 공개).
 

@@ -53,7 +53,7 @@ public static class AskEndpoints
                     answer = new AskAnswerDto(ok.Text, ok.Cited.Select(n => passages[n - 1]).Select(p => new AskSourceDto(p.N, p.ItemId, p.Title)).ToList());
                 else note = "AI가 자료에 맞는 답을 만들지 못해 찾은 자료만 보여 드립니다.";
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or System.Text.Json.JsonException or KeyNotFoundException)
+            catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 logs.CreateLogger("Ask").LogWarning(ex, "AI 답변 실패");
                 note = "AI 답변을 지금 쓸 수 없어 찾은 자료만 보여 드립니다.";

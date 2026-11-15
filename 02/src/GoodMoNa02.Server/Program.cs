@@ -33,14 +33,17 @@ builder.Services.AddDbContext<AppDbContext>((sp, o) => o.UseSqlite(sp.GetRequire
 
 builder.Services.AddSingleton<IPasswordHasher<Staff>, PasswordHasher<Staff>>();
 
-// CS 안내 도우미: 승인된 자료의 검색 색인(메모리) + AI 답변(기본 꺼짐, 켜면 서버 PC의 Ollama)
+// CS 안내 도우미: 승인된 자료의 검색 색인(메모리) + AI 답변(기본 꺼짐 / Claude API / 서버 PC의 Ollama)
 builder.Services.AddSingleton<KbIndex>();
 builder.Services.AddHttpClient(OllamaAnswerWriter.HttpClientName, (sp, c) =>
     c.Timeout = TimeSpan.FromSeconds(Math.Max(5, sp.GetRequiredService<IOptions<AppOptions>>().Value.Assistant.TimeoutSeconds)));
 builder.Services.AddSingleton<IAnswerWriter>(sp =>
-    sp.GetRequiredService<IOptions<AppOptions>>().Value.Assistant.OllamaEnabled
-        ? ActivatorUtilities.CreateInstance<OllamaAnswerWriter>(sp)
-        : new NoAnswerWriter());
+{
+    var assistant = sp.GetRequiredService<IOptions<AppOptions>>().Value.Assistant;
+    if (assistant.ClaudeEnabled) return ActivatorUtilities.CreateInstance<ClaudeAnswerWriter>(sp);
+    if (assistant.OllamaEnabled) return ActivatorUtilities.CreateInstance<OllamaAnswerWriter>(sp);
+    return new NoAnswerWriter();
+});
 builder.Services.AddStaffAuth();
 
 // 로그인·가입 요청은 IP마다 1분에 N번까지 (비밀번호 대입·가입 도배 방지)

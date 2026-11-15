@@ -38,6 +38,9 @@ public sealed class TestApp : WebApplicationFactory<Program>
     /// <summary>서버를 띄우기 전에 서비스를 바꿔 끼웁니다(가짜 AI 등). 첫 요청 전에 설정하세요.</summary>
     public Action<IServiceCollection>? TestServices { get; set; }
 
+    /// <summary>서버 설정 덮어쓰기 (예: App:Assistant:Mode). 첫 요청 전에 넣으세요.</summary>
+    public Dictionary<string, string> TestSettings { get; } = [];
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // web 빌드 결과와 상관없이 화면 경로를 검사할 수 있도록 가짜 HTML을 둡니다.
@@ -50,6 +53,7 @@ public sealed class TestApp : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.UseSetting("App:DataRoot", DataRoot);
         builder.UseSetting("App:Auth:AuthRequestsPerMinute", "1000");
+        foreach (var (key, value) in TestSettings) builder.UseSetting(key, value);
         builder.ConfigureServices(s =>
         {
             s.Replace(ServiceDescriptor.Singleton<TimeProvider>(Time));

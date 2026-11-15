@@ -16,3 +16,6 @@ node_modules/
 *.db-wal
 *.wav
 ggml-*.bin
+
+# 운영 비밀 설정(API 키 등) — 데이터 폴더에만 두지만, 실수로 리포에 만들어도 커밋되지 않게
+appsettings.local.json

@@ -32,7 +32,8 @@
 - [ ] 품의·결재 (연차 승인 흐름을 일반화)
 - [ ] 사내 메신저 (1:1·부서방, SignalR)
 - [x] LLM 위키로 CS 응대 = **CS 안내 도우미** (프로토타입): 자료 추출 → 초안 → 승인 → 검색, 못 찾은 질문 → FAQ(학습 고리), 출처 검사 AI 답변 연결부
-- [ ] CS 도우미 로컬 AI 켜기·평가 (서버 PC에 Ollama·모델 설치, 평가 묶음), 영상 대본 바로 가져오기(Whisper)
+- [x] CS 도우미 AI 답변: 우선 Claude API로 (`deploy/set-claude-key.ps1`)
+- [ ] 평가 묶음으로 답 품질·비용 측정, 로컬 모델(Ollama)로 옮길지 결정, 영상 대본 바로 가져오기(Whisper)
 - [ ] 홈 화면 설치(PWA)·웹 푸시 알림
 
 ## 업무 규칙
@@ -84,7 +85,7 @@
 | 학습 고리 | 못 찾은 질문·"부족함" → 처리할 질문 → 기존 자료에 표현 추가(검색 보조어, 60자 이하) · FAQ로 만들기 · 닫기 |
 | 재검토일 | 지난 승인 자료는 "재검토일 지남" 표시 |
 | 개인정보 | 질문의 전화번호·주민번호는 저장 전에 가림. 환자 기록(01)은 보지 않음 |
-| AI 답변 | 기본 꺼짐. 켜면 서버 PC의 Ollama가 찾은 자료 상위 4건만 근거로 답하고, 근거 번호 검사를 통과해야 보여 줌. 못 찾으면 AI를 부르지 않음, 실패하면 검색 결과만 |
+| AI 답변 | 기본 꺼짐. `Mode`: `Claude`(Claude API, 가린 질문과 찾은 자료 4건이 전송됨) 또는 `Ollama`(서버 PC 로컬). 찾은 자료 상위 4건만 근거로 답하고, 근거 번호 검사를 통과해야 보여 줌. 못 찾으면 AI를 부르지 않음, 실패하면 검색 결과만 |
 
 ## 로그인 구조
 
@@ -142,13 +143,14 @@ src/GoodMoNa02.Server
   Endpoints/              Auth · Admin · Home(홈·주소록) · Notice · Leave · Attendance · Parking · Settings · Knowledge(CS 자료) · Ask(CS 도우미) · Problems
   Intranet/               LeavePolicy(근로기준법 §60, 순수 계산) · LeaveLedger(잔여) · WorkCalendar(근무일) · KoreanHolidays(내장 공휴일)
                           ClinicSetup(병원 설정·휴무일·IP 확인) · AttendanceCodes(입구 QR, HMAC 30초) · Plates(차량 번호)
-  Knowledge/              KbExtractor(자료 추출 규칙) · KbText(2-gram·개인정보 가림) · KbIndex(BM25 메모리 색인) · Assistant(AI 답변: 꺼짐/Ollama, 지시문, 근거 검사)
+  Knowledge/              KbExtractor(자료 추출 규칙) · KbText(2-gram·개인정보 가림) · KbIndex(BM25 메모리 색인) · Assistant(AI 답변: 꺼짐/Ollama, 지시문, 근거 검사) · ClaudeAnswerWriter(Claude API)
   Data/                   Staff · StaffSession · IntranetEntities(공지·연차·휴무일·설정·출퇴근·주차) · KnowledgeEntities(CS 자료·가져오기·질문 기록) · AppDbContext · Migrations/
   Contracts/              DTO · StaffInput(입력 검사)
-tests/GoodMoNa02.Server.Tests   통합 테스트 71개: 로그인(16) · 연차 규칙(24, 순수 계산) · 연차 흐름(10) · 출퇴근(4) · 공지·주소록·홈·주차·휴무일·보호(7) · CS 도우미(10)
+tests/GoodMoNa02.Server.Tests   통합 테스트 72개: 로그인(16) · 연차 규칙(24, 순수 계산) · 연차 흐름(10) · 출퇴근(4) · 공지·주소록·홈·주차·휴무일·보호(7) · CS 도우미(11)
 web/                      login · signup · intranet · notices · leave · attendance · kiosk · parking · people · ask · knowledge · intranet-admin · settings
                           (정적 파일은 /intranet-assets/ — 01의 /assets/와 겹치지 않게. 메뉴는 src/shared/chrome.ts 한 곳)
 deploy/install.ps1        서비스 GoodMoNa02 (localhost:5002)
+deploy/set-claude-key.ps1 CS 도우미 AI를 Claude API로 켜기·끄기 (키는 관리자 창에서 입력, 데이터 폴더에만 저장)
 docs/                     intranet-design(인트라넷 기능) · cs-assistant-design(CS 안내 도우미)
 samples/cs-knowledge/     CS 도우미 가상 예시 자료 (원문 대본 → AI 정리본, 안내 문서, FAQ)
 ```
@@ -176,5 +178,5 @@ dotnet test
 | --- | --- |
 | 서비스 | `GoodMoNa02` (localhost:5002) |
 | 설치 · 데이터 | `C:\GoodMoNa\02\app` · `C:\GoodMoNa\02\data` (SQLite + 서명 키) |
-| 운영 설정 | 데이터 폴더의 `appsettings.local.json` (배포가 덮어쓰지 않음). 예: CS 도우미 AI 켜기 `{"App":{"Assistant":{"Mode":"Ollama","Model":"<모델>"}}}` — [설계 §7](docs/cs-assistant-design.md#7-ai-답변-3단계-기본-꺼짐) |
+| 운영 설정 | 데이터 폴더의 `appsettings.local.json` (배포가 덮어쓰지 않음). CS 도우미 AI를 Claude로 켜기: `deploy\set-claude-key.ps1`(관리자 창에서 키 입력, 끄기 `-Off`). 로컬 모델은 `{"App":{"Assistant":{"Mode":"Ollama","Model":"<모델>"}}}` — [설계 §7](docs/cs-assistant-design.md#7-ai-답변-3단계-기본-꺼짐) |
 | 외부 경로 | Cloudflare 터널(01 설치 스크립트가 설정)이 `/login`, `/signup`, `/intranet*`, `/api/auth/*`, `/api/admin/*`, `/api/intranet/*`, `/.well-known/*`를 02로 보냄 |

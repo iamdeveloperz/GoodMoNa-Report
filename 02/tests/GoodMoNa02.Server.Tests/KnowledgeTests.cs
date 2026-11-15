@@ -292,6 +292,20 @@ public sealed class KnowledgeTests : IDisposable
     }
 
     [Fact]
+    public async Task 설정으로_Claude를_고르면_Claude_답변기가_켜지고_못_찾은_질문엔_부르지_않는다()
+    {
+        _app.TestSettings["App:Assistant:Mode"] = "Claude";
+        _app.TestSettings["App:Assistant:ApiKey"] = "sk-ant-test-not-real"; // 실제 호출은 하지 않음
+        var (nurse, _) = await _app.MemberAsync("nurse1", "Nurse");
+
+        var status = await nurse.Get<AssistantStatusDto>("/api/intranet/ask/status");
+        Assert.Equal((true, "Claude", "claude-opus-5-5"), (status.Enabled, status.Mode, status.Model));
+        var r = await nurse.Post("/api/intranet/ask", new { question = "주차 무료 시간" }).Ok<AskResultDto>(); // 승인된 자료 없음 → AI 안 부름
+        Assert.False(r.Found);
+        Assert.Null(r.Answer);
+    }
+
+    [Fact]
     public async Task AI가_멈춰도_검색_결과는_나온다()
     {
         var nurse = await WithAnswersAsync(new FakeWriter(_ => throw new HttpRequestException("연결 안 됨")));

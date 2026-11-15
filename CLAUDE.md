@@ -7,7 +7,7 @@ GoodMoNa 병원 경과 보고 시스템(PMS) 과제 리포입니다. 시스템 �
 | 폴더 | 내용 | 상태 |
 | --- | --- | --- |
 | `01/` | 보고 흐름 + 원장 결과 확인 + 사진 확대·비교 + 이전 기록 CSV 가져오기 + CRM 연동 방안(설계만). 보고서는 `01/docs/` (설계·구현·결과·CRM) | 완료, https://goodmona.hsdevs.com 운영 중 |
-| `02/` | 2번 과제 사내 인트라넷 — 직원 가입(승인 필수)·로그인·직원 관리, 공지(필독·읽음 확인)·연차(근로기준법 §60, 입사일 기준)·출퇴근(병원 네트워크/입구 QR)·직원 주차·주소록·설정·CS 안내 도우미(LLM 위키: 자료 추출·승인·검색·학습 고리, 로컬 AI는 기본 꺼짐, 설계 `02/docs/cs-assistant-design.md`). 01의 간호사·원장 권한도 이 로그인으로 나눔. 품의·메신저는 예정 | 진행 중 |
+| `02/` | 2번 과제 사내 인트라넷 — 직원 가입(승인 필수)·로그인·직원 관리, 공지(필독·읽음 확인)·연차(근로기준법 §60, 입사일 기준)·출퇴근(병원 네트워크/입구 QR)·직원 주차·주소록·설정·CS 안내 도우미(LLM 위키: 자료 추출·승인·검색·학습 고리, AI 답변은 Claude API/로컬 모델 선택, 설계 `02/docs/cs-assistant-design.md`). 01의 간호사·원장 권한도 이 로그인으로 나눔. 품의·메신저는 예정 | 진행 중 |
 | `deploy/install-all.ps1` | 02 → 01(+터널) 순서로 한 번에 배포 | |
 | `docs/` | 리포 전체 설계 문서 | |
 
@@ -17,7 +17,7 @@ GoodMoNa 병원 경과 보고 시스템(PMS) 과제 리포입니다. 시스템 �
 
 ```powershell
 cd web; npm install; npm run build; cd ..     # 화면 빌드 → 서버 wwwroot
-dotnet test                                   # 통합 테스트 (01: 54개, 02: 71개)
+dotnet test                                   # 통합 테스트 (01: 54개, 02: 72개)
 dotnet run --project src/<서버 프로젝트>        # 개발 서버 (01: 5011, 02: 5012)
 cd web; npm run dev                           # 화면 개발 (01: 5173, 02: 5174)
 dotnet ef migrations add <이름> --project src/<서버 프로젝트>   # dotnet tool restore 먼저
@@ -35,7 +35,7 @@ dotnet ef migrations add <이름> --project src/<서버 프로젝트>   # dotnet
 - 실제 환자 데이터는 리포·테스트에 넣지 않습니다. 예시 사진은 SVG/캔버스로 만든 가짜.
 - 직무 이름(`Owner`·`Doctor`·`Nurse`·`Staff`·`Admin`)은 02 `Data/Entities.cs`의 StaffRole과 01 `Auth/StaffAuth.cs`의 StaffRoles가 같아야 합니다. 출입증 Issuer·Audience도 두 서버 설정이 같아야 합니다.
 - 02의 서명 개인키(`keys/signing-key.pem`)는 데이터 폴더에만 둡니다. 커밋 금지.
-- CS 안내 도우미: 검색·AI 답변의 근거는 **승인된 자료만**. 운영 AI는 서버 PC의 로컬 모델(외부 전송 없음), 켜는 설정은 데이터 폴더의 `appsettings.local.json`(배포가 덮어쓰지 않음). 예시 자료(`02/samples/cs-knowledge`)는 가상 — 실제 병원 정보·환자 정보를 넣지 않습니다.
+- CS 안내 도우미: 검색·AI 답변의 근거는 **승인된 자료만**. AI 답변은 지금 Claude API(가린 질문 + 찾은 자료 4건 전송), 로컬 모델(Ollama)로 바꿀 수 있음. 설정·API 키는 데이터 폴더의 `appsettings.local.json`에만(배포가 덮어쓰지 않음, `02/deploy/set-claude-key.ps1`). 키를 리포·채팅에 넣지 않습니다. 예시 자료(`02/samples/cs-knowledge`)는 가상 — 실제 병원 정보·환자 정보를 넣지 않습니다.
 - 02의 업무 API는 `/api/intranet/*` 아래에 둡니다(터널이 이 경로만 02로 보냄). 다른 접두어가 필요하면 `01/deploy/install.ps1`의 `$intranetPaths`와 `01/web/vite.config.ts` 프록시도 고칩니다.
 - 개발: 02(5012)·01(5011) 서버를 켜고 `01/web`에서 `npm run dev`(5173) — 로그인 경로가 02로 프록시돼 운영과 같은 한 주소로 동작.
 

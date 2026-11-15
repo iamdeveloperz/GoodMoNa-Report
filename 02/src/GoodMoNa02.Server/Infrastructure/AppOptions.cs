@@ -15,17 +15,19 @@ public sealed class AppOptions
 }
 
 /// <summary>
-/// CS 안내 도우미의 AI 답변. 기본은 꺼짐(검색 결과만). 서버 PC에 Ollama와 모델을 설치한 뒤
-/// Mode = "Ollama", Model = "모델 이름"으로 켭니다. 질문·자료는 서버 밖으로 나가지 않습니다.
+/// CS 안내 도우미의 AI 답변. 기본은 꺼짐(검색 결과만).
+/// Mode = "Claude": Claude API(질문·찾은 자료가 Anthropic으로 전송, ApiKey 필요, Model 비우면 claude-opus-5-5).
+/// Mode = "Ollama": 서버 PC의 로컬 모델(Model 필수, 외부 전송 없음).
+/// 운영에서는 데이터 폴더의 appsettings.local.json에 둡니다(배포가 덮어쓰지 않음).
 /// </summary>
 public sealed class AssistantOptions
 {
-    /// <summary>Off | Ollama</summary>
+    /// <summary>Off | Claude | Ollama</summary>
     public string Mode { get; set; } = "Off";
 
     public string OllamaUrl { get; set; } = "http://localhost:11434";
 
-    /// <summary>Ollama 모델 이름 (예: 상업 사용 가능한 한국어 지원 7~8B 모델). 비우면 꺼짐</summary>
+    /// <summary>모델 이름. Ollama는 필수(상업 사용 가능한 한국어 지원 모델), Claude는 비우면 claude-opus-5-5</summary>
     public string Model { get; set; } = "";
 
     /// <summary>답변을 기다리는 최대 시간. 넘기면 검색 결과만 보여 줌</summary>
@@ -33,6 +35,11 @@ public sealed class AssistantOptions
 
     /// <summary>AI에게 넘길 근거 자료 수 (작은 모델은 적을수록 정확)</summary>
     public int MaxPassages { get; set; } = 4;
+
+    /// <summary>Claude API 키. 리포·설치 폴더에 두지 말고 데이터 폴더의 appsettings.local.json에만 (deploy/set-claude-key.ps1)</summary>
+    public string? ApiKey { get; set; }
+
+    public bool ClaudeEnabled => Mode.Equals("Claude", StringComparison.OrdinalIgnoreCase);
 
     public bool OllamaEnabled => Mode.Equals("Ollama", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(Model);
 }
