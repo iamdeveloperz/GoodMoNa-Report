@@ -87,7 +87,7 @@ public sealed class IntranetTests : IDisposable
         await _app.Browser().Post("/api/auth/signup", new { loginId = "waiting", name = "대기", password = TestApp.Password, requestedRole = "Staff" });
 
         var home = await owner.Get<HomeDto>("/api/intranet/home");
-        Assert.Equal(new ManageCountsDto(1, 1, 1, 2), home.Manage); // 입사일 없음: cs1 + 대표원장
+        Assert.Equal(new ManageCountsDto(1, 1, 1, 2, 0), home.Manage); // 입사일 없음: cs1 + 대표원장
         Assert.Null((await nurse.Get<HomeDto>("/api/intranet/home")).Manage);
         Assert.Equal(15m, (await nurse.Get<HomeDto>("/api/intranet/home")).Leave!.Granted);
     }

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GoodMoNa02.Server.Data;
 
 /// <summary>
-/// 인트라넷 DB: 직원 계정·로그인 세션 · 공지 · 연차 · 휴무일 · 출퇴근 · 주차 · 병원 설정.
+/// 인트라넷 DB: 직원 계정·로그인 세션 · 공지 · 연차 · 휴무일 · 출퇴근 · 주차 · 병원 설정 · CS 지식 자료·질문 기록.
 /// 환자 데이터는 두지 않습니다(01 진료 서버의 DB가 주인).
 /// </summary>
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
@@ -23,6 +23,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ParkingSpot> ParkingSpots => Set<ParkingSpot>();
     public DbSet<ParkingAssignment> ParkingAssignments => Set<ParkingAssignment>();
     public DbSet<ParkingRequest> ParkingRequests => Set<ParkingRequest>();
+    public DbSet<KbItem> KbItems => Set<KbItem>();
+    public DbSet<KbImport> KbImports => Set<KbImport>();
+    public DbSet<AskLog> AskLogs => Set<AskLog>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -143,6 +146,37 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.HasIndex(r => r.Status);
             e.HasOne(r => r.Staff).WithMany().HasForeignKey(r => r.StaffId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(r => r.Vehicle).WithMany().HasForeignKey(r => r.VehicleId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<KbItem>(e =>
+        {
+            e.Property(i => i.Kind).HasConversion<string>().HasMaxLength(8);
+            e.Property(i => i.Status).HasConversion<string>().HasMaxLength(16);
+            e.Property(i => i.Source).HasConversion<string>().HasMaxLength(16);
+            e.Property(i => i.Title).HasMaxLength(KbLimits.Title);
+            e.Property(i => i.Body).HasMaxLength(KbLimits.Body);
+            e.Property(i => i.Category).HasMaxLength(KbLimits.Category);
+            e.Property(i => i.Keywords).HasMaxLength(KbLimits.Keywords);
+            e.Property(i => i.SourceRef).HasMaxLength(100);
+            e.Property(i => i.CreatedByName).HasMaxLength(30);
+            e.Property(i => i.DecidedByName).HasMaxLength(30);
+            e.Property(i => i.RejectReason).HasMaxLength(200);
+            e.HasIndex(i => i.Status);
+            e.HasOne(i => i.Import).WithMany().HasForeignKey(i => i.ImportId).OnDelete(DeleteBehavior.SetNull);
+        });
+        b.Entity<KbImport>(e =>
+        {
+            e.Property(i => i.Name).HasMaxLength(100);
+            e.Property(i => i.Origin).HasMaxLength(20);
+            e.Property(i => i.CreatedByName).HasMaxLength(30);
+        });
+        b.Entity<AskLog>(e =>
+        {
+            e.Property(a => a.StaffName).HasMaxLength(30);
+            e.Property(a => a.Question).HasMaxLength(KbLimits.Question);
+            e.Property(a => a.FollowUp).HasConversion<string>().HasMaxLength(16);
+            e.HasIndex(a => a.FollowUp);
+            e.HasIndex(a => new { a.StaffId, a.CreatedAt });
         });
     }
 

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafaf7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230e0e0e%27/%3E%3Crect x=%274%27 y=%2710%27 width=%278%27 height=%272%27 fill=%27%23d7261e%27/%3E%3C/svg%3E">
+  <title>CS 도우미 — GoodMoNa</title>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="/intranet">GoodMoNa<span>인트라넷</span></a>
+      <nav class="nav" id="nav" aria-label="화면"></nav>
+      <span class="who" id="who"></span>
+    </div>
+  </header>
+  <main class="page ask">
+    <div class="row-between"><h1 class="page-title">CS 도우미</h1><span class="meta" id="mode"></span></div>
+    <form id="askForm" class="ask-form">
+      <label class="field grow"><span class="label">고객 문의를 그대로 적어 보세요 · 환자 이름·연락처는 넣지 마세요</span>
+        <input type="search" name="question" maxlength="500" placeholder="예: 주차 몇 시간 무료예요?" autocomplete="off" required></label>
+      <button class="btn primary" type="submit">찾기</button>
+    </form>
+    <div id="result" class="ask-result" aria-live="polite"></div>
+    <div class="cols">
+      <section class="card"><h2>내 최근 질문</h2><div id="mine"></div></section>
+      <section class="card"><h2>자료 제안하기</h2>
+        <p class="meta">자주 받는 문의인데 자료가 없으면 질문과 답을 적어 주세요. 관리자가 확인한 뒤 모두가 찾을 수 있게 됩니다.</p>
+        <form id="proposeForm" class="form">
+          <label class="field"><span class="label">질문</span><input type="text" name="title" maxlength="200" required></label>
+          <label class="field"><span class="label">답</span><textarea name="body" rows="4" maxlength="4000" required></textarea></label>
+          <div><button class="btn" type="submit">제안하기</button></div>
+        </form>
+        <div id="proposals"></div>
+      </section>
+    </div>
+    <section class="card"><div class="row-between"><h2>전체 자료</h2><input type="search" id="filter" placeholder="자료 안에서 거르기" aria-label="자료 거르기"></div><div id="all"></div></section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/ask/main.ts"></script>
+</body>
+</html>

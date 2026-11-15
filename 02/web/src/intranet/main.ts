@@ -21,10 +21,12 @@ const TILES: Tile[] = [
   { href: "/intranet/attendance", title: "출퇴근", desc: "출근 · 퇴근 기록, 이번 달" },
   { href: "/intranet/parking", title: "주차", desc: "내 차량 · 주차 배정 · 차주 찾기" },
   { href: "/intranet/people", title: "주소록", desc: "직원 연락처" },
+  { href: "/intranet/ask", title: "CS 도우미", desc: "고객 문의 → 승인된 FAQ·안내 문서에서 답 찾기" },
   { href: "/report", title: "보고", desc: "환자 검색 → 폰 촬영(QR) → 경과 보고", roles: ["Owner", "Doctor", "Nurse"] },
   { href: "/director", title: "결과 확인", desc: "받은 보고 · 전후 비교 · 소견 녹음", roles: ["Owner", "Doctor"] },
   { href: "/intranet/admin", title: "직원 관리", desc: "가입 승인 · 직무 · 입사일 · 사용 중지", roles: ["Owner", "Admin"] },
   { href: "/intranet/settings", title: "설정", desc: "근무 요일 · 출퇴근 확인 · 휴무일", roles: ["Owner", "Admin"] },
+  { href: "/intranet/knowledge", title: "자료 관리", desc: "CS 자료 가져오기 · 승인 · 못 찾은 질문", roles: ["Owner", "Admin"] },
   { href: "/import", title: "기록 가져오기", desc: "이전 전산 CSV·사진 (서버 PC에서)", roles: ["Owner", "Admin"] },
 ];
 
@@ -94,6 +96,7 @@ async function load(): Promise<void> {
       { href: "/intranet/leave#pending", title: "휴가 승인", n: m.leavePending },
       { href: "/intranet/parking#requests", title: "주차 배정", n: m.parkingPending },
       { href: "/intranet/admin", title: "입사일 미등록", n: m.missingHireDate },
+      { href: "/intranet/knowledge", title: "CS 자료 · 질문", n: m.kbPending },
     ];
     byId("todo").innerHTML = todo
       .map((t) => `<a class="tile" href="${t.href}"><b>${t.title}</b><span>${t.n ? `${t.n}건` : "없음"}</span>${t.n ? `<em class="count">${t.n}</em>` : ""}</a>`)

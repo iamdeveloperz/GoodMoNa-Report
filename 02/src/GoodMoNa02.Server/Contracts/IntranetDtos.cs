@@ -28,7 +28,8 @@ public sealed record HomeDto(
     IReadOnlyList<CalendarLeaveDto> OffToday,
     ManageCountsDto? Manage);
 
-public sealed record ManageCountsDto(int StaffPending, int LeavePending, int ParkingPending, int MissingHireDate);
+/// <summary>관리자 홈의 처리할 일. KbPending = CS 자료 승인 대기 + 처리할 질문</summary>
+public sealed record ManageCountsDto(int StaffPending, int LeavePending, int ParkingPending, int MissingHireDate, int KbPending);
 
 /* ---------- 공지 ---------- */
 

@@ -28,12 +28,15 @@ public sealed class TestApp : WebApplicationFactory<Program>
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
     public const string Password = "goodmona-2026!";
 
-    public static readonly string[] Pages = ["login", "signup", "intranet", "intranet-admin", "notices", "leave", "attendance", "kiosk", "parking", "people", "settings"];
+    public static readonly string[] Pages = ["login", "signup", "intranet", "intranet-admin", "notices", "leave", "attendance", "kiosk", "parking", "people", "settings", "ask", "knowledge"];
 
     public string DataRoot { get; } = Path.Combine(Path.GetTempPath(), "goodmona02-tests", Guid.NewGuid().ToString("N"));
 
     // 쿠키 만료는 HttpClient가 실제 시계로 판단하므로, 시작 시각은 지금으로 둡니다.
     public TestTime Time { get; } = new(DateTimeOffset.UtcNow);
+
+    /// <summary>서버를 띄우기 전에 서비스를 바꿔 끼웁니다(가짜 AI 등). 첫 요청 전에 설정하세요.</summary>
+    public Action<IServiceCollection>? TestServices { get; set; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -47,7 +50,11 @@ public sealed class TestApp : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.UseSetting("App:DataRoot", DataRoot);
         builder.UseSetting("App:Auth:AuthRequestsPerMinute", "1000");
-        builder.ConfigureServices(s => s.Replace(ServiceDescriptor.Singleton<TimeProvider>(Time)));
+        builder.ConfigureServices(s =>
+        {
+            s.Replace(ServiceDescriptor.Singleton<TimeProvider>(Time));
+            TestServices?.Invoke(s);
+        });
     }
 
     /// <summary>쿠키를 따로 들고 다니는 브라우저 하나. 리다이렉트는 따라가지 않습니다(화면 보호 검사용).</summary>

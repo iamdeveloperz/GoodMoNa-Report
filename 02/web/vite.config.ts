@@ -23,6 +23,8 @@ export default defineConfig({
         parking: resolve(import.meta.dirname, "parking.html"),
         people: resolve(import.meta.dirname, "people.html"),
         settings: resolve(import.meta.dirname, "settings.html"),
+        ask: resolve(import.meta.dirname, "ask.html"),
+        knowledge: resolve(import.meta.dirname, "knowledge.html"),
       },
     },
   },

@@ -1,8 +1,8 @@
 # GoodMoNa — 2번 과제: 사내 인트라넷
 
-굿모나의원 직원이 매일 쓰는 인트라넷입니다. 직원 계정(가입 → 승인)과 로그인 위에 **공지 · 연차 · 출퇴근 · 직원 주차 · 주소록**을 올렸고,
+굿모나의원 직원이 매일 쓰는 인트라넷입니다. 직원 계정(가입 → 승인)과 로그인 위에 **공지 · 연차 · 출퇴근 · 직원 주차 · 주소록 · CS 안내 도우미**를 올렸고,
 이 로그인으로 1번 과제(보고·결과 확인)의 간호사·원장 권한도 함께 나눕니다.
-과제 원문: 기본 인트라넷 형태 + 연차 관리 + 차 관리 + LLM 위키로 CS 응대. 전체 설계는 [../docs/architecture.md](../docs/architecture.md), 인트라넷 기능 설계(법 근거·대안)는 [docs/intranet-design.md](docs/intranet-design.md).
+과제 원문: 기본 인트라넷 형태 + 연차 관리 + 차 관리 + LLM 위키로 CS 응대. 전체 설계는 [../docs/architecture.md](../docs/architecture.md), 인트라넷 기능 설계(법 근거·대안)는 [docs/intranet-design.md](docs/intranet-design.md), CS 안내 도우미(LLM 위키) 설계는 [docs/cs-assistant-design.md](docs/cs-assistant-design.md).
 
 | 주소 | 화면 | 누가 |
 | --- | --- | --- |
@@ -15,6 +15,8 @@
 | `/intranet/attendance/kiosk` | 입구 QR 화면: 30초마다 바뀌는 출퇴근 QR (입구 태블릿용) | 대표원장·관리자 |
 | `/intranet/parking` | 주차: 번호 뒷자리로 차주 찾기 · 내 주차 · 내 차량 (관리자: 배정 신청 대기 · 주차면 · 배정) | 로그인한 직원 |
 | `/intranet/people` | 주소록 · 내 부서·연락처 수정 (입사일은 관리자에게만) | 로그인한 직원 |
+| `/intranet/ask` | CS 도우미: 고객 문의 → (켜져 있으면) AI 답변 · FAQ · 안내 문서, 답 복사, 도움됨/부족함, 내 최근 질문, 자료 제안, 전체 자료 | 로그인한 직원 |
+| `/intranet/knowledge` | 자료 관리: 처리할 질문(표현 추가 · FAQ로 만들기 · 닫기) · 승인 대기 · 자료 가져오기(미리 보기 → 초안, AI 정리 지시문) · 승인된 자료(재검토일 · 내리기) · 가져오기 기록 | 대표원장·관리자 |
 | `/intranet/admin` | 직원 관리: 가입 승인·반려, 직무 변경, **입사일**, 사용 중지 | 대표원장·관리자 |
 | `/intranet/settings` | 설정: 근무 요일·시간 · 같은 직무 휴가 경고 인원 · 출퇴근 확인(병원 IP) · 쉬는 날 | 대표원장·관리자 |
 
@@ -29,7 +31,8 @@
 - [x] 주소록
 - [ ] 품의·결재 (연차 승인 흐름을 일반화)
 - [ ] 사내 메신저 (1:1·부서방, SignalR)
-- [ ] LLM 위키로 CS 응대 (원장 유튜브 대본 = Whisper 변환, 매뉴얼·온보딩, 출처 표시 답변) — 이번 단계 제외
+- [x] LLM 위키로 CS 응대 = **CS 안내 도우미** (프로토타입): 자료 추출 → 초안 → 승인 → 검색, 못 찾은 질문 → FAQ(학습 고리), 출처 검사 AI 답변 연결부
+- [ ] CS 도우미 로컬 AI 켜기·평가 (서버 PC에 Ollama·모델 설치, 평가 묶음), 영상 대본 바로 가져오기(Whisper)
 - [ ] 홈 화면 설치(PWA)·웹 푸시 알림
 
 ## 업무 규칙
@@ -68,6 +71,20 @@
 | 차량 | 본인이 등록(최대 3대). 번호는 `12가3456` · `123가4567` · `서울12가3456` 형식, 공백·하이픈은 빼고 저장, 번호 중복 불가 |
 | 배정 | 직원이 신청 → 관리자가 주차면·시작일(끝 날짜는 선택)을 정해 배정. 주차면 하나에 같은 기간 한 명, 직원 한 명에 같은 기간 한 면 |
 | 차주 찾기 | 번호 2자리 이상(보통 뒤 4자리)으로 검색 → 차주 이름·부서·연락처·주차면. 로그인한 직원만 |
+
+### CS 안내 도우미
+
+| 항목 | 규칙 |
+| --- | --- |
+| 근거 | **승인된 자료만** 검색·AI 답변에 씀. 초안·반려·내린 자료는 빠짐 |
+| 자료 상태 | 초안 → 승인 / 반려(사유 필수, 초안만) · 승인 → 내림(검색에서 빠짐) → 다시 승인 가능 · 승인된 자료는 내린 뒤에만 지움 |
+| 누가 | 직원: 질문, 승인된 자료 보기, 자료 제안(초안). 대표원장·관리자: 가져오기·승인·반려·고치기·내리기·지우기, 처리할 질문 |
+| 가져오기 | `# 큰 제목`/`## 소제목` → 문서, `Q:`/`A:` → FAQ, `분류:`·`키워드:` 줄, `<!-- -->` 무시. 구조 없는 글은 문서 1건. 본문 4,000자 넘으면 나눔. 한 번에 200,000자·300건까지. 모두 초안으로 들어옴 |
+| 검색 | 글자 2개 단위 + BM25, 제목·보조어 두 배. 질문 조각의 40% 이상이 든 자료 = 찾음. FAQ 3 · 문서 5 · 못 찾으면 관련 자료 3 |
+| 학습 고리 | 못 찾은 질문·"부족함" → 처리할 질문 → 기존 자료에 표현 추가(검색 보조어, 60자 이하) · FAQ로 만들기 · 닫기 |
+| 재검토일 | 지난 승인 자료는 "재검토일 지남" 표시 |
+| 개인정보 | 질문의 전화번호·주민번호는 저장 전에 가림. 환자 기록(01)은 보지 않음 |
+| AI 답변 | 기본 꺼짐. 켜면 서버 PC의 Ollama가 찾은 자료 상위 4건만 근거로 답하고, 근거 번호 검사를 통과해야 보여 줌. 못 찾으면 AI를 부르지 않음, 실패하면 검색 결과만 |
 
 ## 로그인 구조
 
@@ -113,6 +130,8 @@
 | 출퇴근 | `GET /attendance/me?month=`, `POST /attendance/check-in · check-out` (본문 `{code}`: 입구 QR), ★`GET /attendance/daily?date=`, ★`GET /attendance/staff/{id}?month=`, ★`PUT /attendance/staff/{id}/{date}`, ★`GET /attendance/kiosk` |
 | 주차 | `GET /parking/me`, `POST /parking/vehicles`, `DELETE /parking/vehicles/{id}`, `POST /parking/requests`, `POST /parking/requests/{id}/cancel`, `GET /parking/lookup?q=`, ★`GET · POST /parking/spots`, ★`PUT /parking/spots/{id}`, ★`GET /parking/requests`, ★`POST /parking/requests/{id}/reject`, ★`POST /parking/assignments`, ★`POST /parking/assignments/{id}/end`, ★`GET /parking/vehicles` |
 | 설정 · 쉬는 날 | ★`GET · PUT /settings`, `GET /holidays?year=`, ★`POST /holidays`, ★`DELETE /holidays/{date}` |
+| CS 도우미 | `POST /ask`, `POST /ask/{id}/feedback`, `GET /ask/mine`, `GET /ask/status` |
+| CS 자료 | `GET /kb/items?status=&mine=&q=`, `GET /kb/items/{id}`, `POST /kb/items`(직원은 초안 제안), ★`PUT /kb/items/{id}`, ★`POST /kb/items/{id}/approve · reject · archive`, ★`DELETE /kb/items/{id}`, ★`POST /kb/approve`(여러 건), ★`POST /kb/import/preview`, ★`POST /kb/import`, ★`GET /kb/imports`, ★`GET /kb/questions?followUp=`, ★`POST /kb/questions/{id}/dismiss · attach`, ★`GET /kb/overview` |
 
 ## 구성
 
@@ -120,15 +139,18 @@
 src/GoodMoNa02.Server
   Program.cs              DI · 인증 · 요청 제한 · 화면 주소
   Auth/                   SigningKeys(RSA 키) · TokenService(출입증·쿠키) · AuthSetup(JWT 확인·정책) · PageGate(화면 보호)
-  Endpoints/              Auth · Admin · Home(홈·주소록) · Notice · Leave · Attendance · Parking · Settings · Problems
+  Endpoints/              Auth · Admin · Home(홈·주소록) · Notice · Leave · Attendance · Parking · Settings · Knowledge(CS 자료) · Ask(CS 도우미) · Problems
   Intranet/               LeavePolicy(근로기준법 §60, 순수 계산) · LeaveLedger(잔여) · WorkCalendar(근무일) · KoreanHolidays(내장 공휴일)
                           ClinicSetup(병원 설정·휴무일·IP 확인) · AttendanceCodes(입구 QR, HMAC 30초) · Plates(차량 번호)
-  Data/                   Staff · StaffSession · IntranetEntities(공지·연차·휴무일·설정·출퇴근·주차) · AppDbContext · Migrations/
+  Knowledge/              KbExtractor(자료 추출 규칙) · KbText(2-gram·개인정보 가림) · KbIndex(BM25 메모리 색인) · Assistant(AI 답변: 꺼짐/Ollama, 지시문, 근거 검사)
+  Data/                   Staff · StaffSession · IntranetEntities(공지·연차·휴무일·설정·출퇴근·주차) · KnowledgeEntities(CS 자료·가져오기·질문 기록) · AppDbContext · Migrations/
   Contracts/              DTO · StaffInput(입력 검사)
-tests/GoodMoNa02.Server.Tests   통합 테스트 61개: 로그인(16) · 연차 규칙(24, 순수 계산) · 연차 흐름(10) · 출퇴근(4) · 공지·주소록·홈·주차·휴무일·보호(7)
-web/                      login · signup · intranet · notices · leave · attendance · kiosk · parking · people · intranet-admin · settings
+tests/GoodMoNa02.Server.Tests   통합 테스트 71개: 로그인(16) · 연차 규칙(24, 순수 계산) · 연차 흐름(10) · 출퇴근(4) · 공지·주소록·홈·주차·휴무일·보호(7) · CS 도우미(10)
+web/                      login · signup · intranet · notices · leave · attendance · kiosk · parking · people · ask · knowledge · intranet-admin · settings
                           (정적 파일은 /intranet-assets/ — 01의 /assets/와 겹치지 않게. 메뉴는 src/shared/chrome.ts 한 곳)
 deploy/install.ps1        서비스 GoodMoNa02 (localhost:5002)
+docs/                     intranet-design(인트라넷 기능) · cs-assistant-design(CS 안내 도우미)
+samples/cs-knowledge/     CS 도우미 가상 예시 자료 (원문 대본 → AI 정리본, 안내 문서, FAQ)
 ```
 
 ## 실행
@@ -154,4 +176,5 @@ dotnet test
 | --- | --- |
 | 서비스 | `GoodMoNa02` (localhost:5002) |
 | 설치 · 데이터 | `C:\GoodMoNa\02\app` · `C:\GoodMoNa\02\data` (SQLite + 서명 키) |
+| 운영 설정 | 데이터 폴더의 `appsettings.local.json` (배포가 덮어쓰지 않음). 예: CS 도우미 AI 켜기 `{"App":{"Assistant":{"Mode":"Ollama","Model":"<모델>"}}}` — [설계 §7](docs/cs-assistant-design.md#7-ai-답변-3단계-기본-꺼짐) |
 | 외부 경로 | Cloudflare 터널(01 설치 스크립트가 설정)이 `/login`, `/signup`, `/intranet*`, `/api/auth/*`, `/api/admin/*`, `/api/intranet/*`, `/.well-known/*`를 02로 보냄 |

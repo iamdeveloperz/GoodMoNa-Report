@@ -15,9 +15,11 @@ const NAV: NavItem[] = [
   { href: "/intranet/attendance", label: "출퇴근" },
   { href: "/intranet/parking", label: "주차" },
   { href: "/intranet/people", label: "주소록" },
+  { href: "/intranet/ask", label: "CS 도우미" },
   { href: "/report", label: "보고", roles: ["Owner", "Doctor", "Nurse"] },
   { href: "/director", label: "결과 확인", roles: ["Owner", "Doctor"] },
   { href: "/intranet/admin", label: "직원 관리", roles: ["Owner", "Admin"] },
+  { href: "/intranet/knowledge", label: "자료 관리", roles: ["Owner", "Admin"] },
   { href: "/intranet/settings", label: "설정", roles: ["Owner", "Admin"] },
 ];
 

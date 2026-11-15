@@ -181,7 +181,7 @@ export interface Home {
   requiredUnread: NoticeListItem[];
   recentNotices: NoticeListItem[];
   offToday: CalendarLeave[];
-  manage: { staffPending: number; leavePending: number; parkingPending: number; missingHireDate: number } | null;
+  manage: { staffPending: number; leavePending: number; parkingPending: number; missingHireDate: number; kbPending: number } | null;
 }
 
 export interface Settings {
@@ -258,3 +258,110 @@ export const LEAVE_STATUS: Record<LeaveStatus, string> = { Pending: "승인 대�
 export const METHOD: Record<AttendanceMethod, string> = { Network: "병원 네트워크", Qr: "입구 QR", Unverified: "확인 없음", Manual: "관리자 수정" };
 export const DAY_STATUS: Record<DayStatus, string> = { Off: "휴무", Leave: "휴가", Working: "근무 중", Done: "퇴근", Absent: "기록 없음", None: "" };
 export const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+/* ---------- CS 안내 도우미 (서버 Contracts/KnowledgeDtos.cs) ---------- */
+
+export type KbKind = "Faq" | "Doc";
+export type KbStatus = "Draft" | "Published" | "Rejected" | "Archived";
+export type KbSource = "Manual" | "Import" | "Question";
+export type AskFollowUp = "None" | "Open" | "Resolved" | "Dismissed";
+
+export interface KbItem {
+  id: number;
+  kind: KbKind;
+  status: KbStatus;
+  title: string;
+  body: string;
+  category: string;
+  keywords: string;
+  source: KbSource;
+  sourceRef: string | null;
+  importId: number | null;
+  reviewBy: string | null;
+  stale: boolean;
+  createdAt: string;
+  createdByName: string;
+  updatedAt: string | null;
+  decidedAt: string | null;
+  decidedByName: string | null;
+  rejectReason: string | null;
+}
+
+export interface KbDraft {
+  kind: KbKind;
+  title: string;
+  body: string;
+  category: string;
+  keywords: string;
+}
+
+export interface KbImportPreview {
+  items: KbDraft[];
+  warnings: string[];
+}
+
+export interface KbImport {
+  id: number;
+  name: string;
+  origin: string;
+  itemCount: number;
+  createdAt: string;
+  createdByName: string;
+}
+
+export interface AssistantStatus {
+  enabled: boolean;
+  mode: string;
+  model: string | null;
+}
+
+export interface KbOverview {
+  drafts: number;
+  published: number;
+  stale: number;
+  openQuestions: number;
+  assistant: AssistantStatus;
+}
+
+export interface AskHit {
+  id: number;
+  kind: KbKind;
+  title: string;
+  category: string;
+  snippet: string;
+  body: string;
+  coverage: number;
+  reviewBy: string | null;
+  stale: boolean;
+}
+
+export interface AskResult {
+  logId: number;
+  question: string;
+  found: boolean;
+  faqs: AskHit[];
+  docs: AskHit[];
+  related: AskHit[];
+  answer: { text: string; sources: { n: number; itemId: number; title: string }[] } | null;
+  note: string | null;
+}
+
+export interface AskLog {
+  id: number;
+  question: string;
+  staffId: number;
+  staffName: string;
+  createdAt: string;
+  found: boolean;
+  answered: boolean;
+  helpful: boolean | null;
+  followUp: AskFollowUp;
+  topItemId: number | null;
+  topItemTitle: string | null;
+  topCoverage: number;
+  resolvedItemId: number | null;
+}
+
+export const KB_KIND: Record<KbKind, string> = { Faq: "FAQ", Doc: "문서" };
+export const KB_STATUS: Record<KbStatus, string> = { Draft: "초안", Published: "승인", Rejected: "반려", Archived: "내림" };
+export const KB_SOURCE: Record<KbSource, string> = { Manual: "직접 작성", Import: "가져오기", Question: "직원 질문" };

@@ -10,6 +10,31 @@ public sealed class AppOptions
     public string TimeZone { get; set; } = "Asia/Seoul";
 
     public AuthOptions Auth { get; set; } = new();
+
+    public AssistantOptions Assistant { get; set; } = new();
+}
+
+/// <summary>
+/// CS 안내 도우미의 AI 답변. 기본은 꺼짐(검색 결과만). 서버 PC에 Ollama와 모델을 설치한 뒤
+/// Mode = "Ollama", Model = "모델 이름"으로 켭니다. 질문·자료는 서버 밖으로 나가지 않습니다.
+/// </summary>
+public sealed class AssistantOptions
+{
+    /// <summary>Off | Ollama</summary>
+    public string Mode { get; set; } = "Off";
+
+    public string OllamaUrl { get; set; } = "http://localhost:11434";
+
+    /// <summary>Ollama 모델 이름 (예: 상업 사용 가능한 한국어 지원 7~8B 모델). 비우면 꺼짐</summary>
+    public string Model { get; set; } = "";
+
+    /// <summary>답변을 기다리는 최대 시간. 넘기면 검색 결과만 보여 줌</summary>
+    public int TimeoutSeconds { get; set; } = 60;
+
+    /// <summary>AI에게 넘길 근거 자료 수 (작은 모델은 적을수록 정확)</summary>
+    public int MaxPassages { get; set; } = 4;
+
+    public bool OllamaEnabled => Mode.Equals("Ollama", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(Model);
 }
 
 /// <summary>로그인·출입증(토큰) 설정. Issuer·Audience는 01 진료 서버 설정과 같아야 합니다.</summary>
