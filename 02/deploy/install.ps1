@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-  GoodMoNa 02(인트라넷: 직원 계정·로그인)를 이 PC에 Windows 서비스로 설치합니다.
+  GoodMoNa 02(인트라넷: 직원 계정·로그인·공지·연차·출퇴근·주차)를 이 PC에 Windows 서비스로 설치합니다.
 
 .DESCRIPTION
   다시 실행해도 됩니다. 하는 일:
@@ -9,7 +9,7 @@
     3. http://localhost:5002/healthz 확인
 
   외부 공개(Cloudflare Tunnel)는 01의 터널이 경로로 나눠 보냅니다:
-    /login · /signup · /intranet* · /api/auth/* · /api/admin/* · /.well-known/* → 02, 나머지 → 01
+    /login · /signup · /intranet* · /api/auth/* · /api/admin/* · /api/intranet/* · /.well-known/* → 02, 나머지 → 01
   터널 설정은 01/deploy/install.ps1이 씁니다. 두 개를 한 번에 하려면 리포 맨 위의 deploy/install-all.ps1.
 
   관리자 권한이 없으면 UAC 창을 띄워 스스로 다시 실행합니다.

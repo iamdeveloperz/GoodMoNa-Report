@@ -41,6 +41,7 @@ export default defineConfig({
       // 02로 가는 경로를 먼저 (운영의 Cloudflare 경로 규칙과 같게)
       "/api/auth": intranet,
       "/api/admin": intranet,
+      "/api/intranet": intranet,
       "/.well-known": intranet,
       "/login": intranet,
       "/signup": intranet,

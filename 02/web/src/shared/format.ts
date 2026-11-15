@@ -80,3 +80,37 @@ export const byId =<T extends HTMLElement = HTMLElement>(id: string): T => {
   if (!el) throw new Error(`#${id} 요소가 없습니다.`);
   return el as T;
 };
+
+/** 0.5 단위 일수: 15 → "15", 2.5 → "2.5" */
+export const fmtDays = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+/** 2026-11-13 → 11.13 (금) */
+export const fmtMDW = (iso: string): string => {
+  const [y, m, d] = iso.split("-").map(Number) as [number, number, number];
+  return `${m}.${d} (${WEEKDAY[new Date(y, m - 1, d).getDay()]})`;
+};
+
+/** 시작~끝 날짜 (같으면 하루) */
+export const fmtRange = (start: string, end: string): string => (start === end ? fmtMDW(start) : `${fmtMDW(start)} ~ ${fmtMDW(end)}`);
+
+/** ISO 시각 → 2026.11.13 */
+export const fmtDate = (iso: string): string => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+};
+
+/** 2026-11 → 2026년 11월 */
+export const fmtMonth = (ym: string): string => `${ym.slice(0, 4)}년 ${Number(ym.slice(5, 7))}월`;
+
+export const addMonths = (ym: string, n: number): string => {
+  const [y, m] = ym.split("-").map(Number) as [number, number];
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+};
+
+/** "09:00:00" → "09:00" */
+export const hm = (t: string): string => t.slice(0, 5);
+
+/** 폼 안의 이름 있는 입력값을 객체로 */
+export const formValues = (form: HTMLFormElement): Record<string, string> =>
+  Object.fromEntries([...new FormData(form).entries()].map(([k, v]) => [k, String(v)]));

@@ -155,7 +155,7 @@ elseif (-not (Test-Path $credDst)) { Fail "터널 자격 증명($id.json)을 찾
 # 서비스(LocalSystem)는 사용자 폴더를 못 보므로 설정·자격 증명을 설치 폴더에 둡니다.
 $config = Join-Path $tunnelDir "config.yml"
 # 같은 주소를 경로로 나눕니다: 로그인·직원 관리(02 인트라넷) / 나머지 진료 화면(01). 위에서부터 먼저 맞는 규칙을 씁니다.
-$intranetPaths = '^/(login|signup|intranet|intranet-assets|\.well-known|api/auth|api/admin)(/.*)?$'
+$intranetPaths = '^/(login|signup|intranet|intranet-assets|\.well-known|api/auth|api/admin|api/intranet)(/.*)?$'
 @"
 tunnel: $id
 credentials-file: '$credDst'

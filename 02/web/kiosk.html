@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafaf7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230e0e0e%27/%3E%3Crect x=%274%27 y=%2710%27 width=%278%27 height=%272%27 fill=%27%23d7261e%27/%3E%3C/svg%3E">
+  <title>출근 QR — GoodMoNa</title>
+</head>
+<body>
+  <main class="kiosk">
+    <p class="kiosk-brand">GoodMoNa · 출퇴근</p>
+    <p class="kiosk-clock" id="clock">--:--</p>
+    <canvas id="qr" width="480" height="480" aria-label="출퇴근 QR 코드"></canvas>
+    <p class="kiosk-help">휴대폰 카메라로 찍고, 열린 화면에서 <b>출근</b> 또는 <b>퇴근</b>을 누르세요.</p>
+    <div class="bar kiosk-bar"><i id="remain"></i></div>
+    <p class="meta" id="status">불러오는 중…</p>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/kiosk/main.ts"></script>
+</body>
+</html>

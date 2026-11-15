@@ -16,6 +16,7 @@ export interface StaffItem {
   decidedAt: string | null;
   decidedBy: string | null;
   rejectReason: string | null;
+  hireDate: string | null;
 }
 
 export class ApiError extends Error {

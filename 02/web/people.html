@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafaf7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230e0e0e%27/%3E%3Crect x=%274%27 y=%2710%27 width=%278%27 height=%272%27 fill=%27%23d7261e%27/%3E%3C/svg%3E">
+  <title>주소록 — GoodMoNa</title>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="/intranet">GoodMoNa<span>인트라넷</span></a>
+      <nav class="nav" id="nav" aria-label="화면"></nav>
+      <span class="who" id="who"></span>
+    </div>
+  </header>
+  <main class="page people-page">
+    <h1 class="page-title">주소록</h1>
+    <input type="search" id="q" placeholder="이름 · 부서 · 직무 · 연락처로 찾기" aria-label="주소록 검색">
+    <div id="list"></div>
+    <section class="block">
+      <div class="section-head"><span class="index">—</span><h2>내 연락처</h2><span class="grow"></span></div>
+      <div id="profile"></div>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/people/main.ts"></script>
+</body>
+</html>

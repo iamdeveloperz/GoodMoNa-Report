@@ -19,6 +19,7 @@ public static class AdminEndpoints
         g.MapPut("/{id:int}/role", ChangeRole);
         g.MapPost("/{id:int}/disable", Disable);
         g.MapPost("/{id:int}/enable", Enable);
+        g.MapPut("/{id:int}/profile", UpdateProfile);
     }
 
     private static async Task<IResult> List(string? status, AppDbContext db, CancellationToken ct)
@@ -110,6 +111,27 @@ public static class AdminEndpoints
         return Results.Ok(ToDto(staff, user.Identity?.Name));
     }
 
+    /// <summary>부서·연락처·입사일. 입사일은 연차 계산에 쓰입니다("" 이면 지움).</summary>
+    private static async Task<IResult> UpdateProfile(int id, StaffProfileRequest req, ClaimsPrincipal user, AppDbContext db, CancellationToken ct)
+    {
+        var staff = await db.Staff.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (staff is null) return Problems.NotFound("직원을 찾을 수 없습니다.");
+        if (StaffProfile.CheckPhone(req.Phone) is { } e) return Problems.Validation("phone", e);
+        DateOnly? hire = null;
+        if (!string.IsNullOrWhiteSpace(req.HireDate))
+        {
+            if (!DateOnly.TryParseExact(req.HireDate, "yyyy-MM-dd", out var d)) return Problems.Validation("hireDate", "입사일 형식이 올바르지 않습니다.");
+            if (d.Year < 1950 || d > DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1)) return Problems.Validation("hireDate", "입사일을 확인해 주세요.");
+            hire = d;
+        }
+        staff.Department = StaffInput.Optional(req.Department, 30);
+        staff.Phone = StaffInput.Optional(req.Phone, 20);
+        staff.HireDate = hire;
+        await db.SaveChangesAsync(ct);
+        var decidedBy = staff.DecidedById is { } did ? await db.Staff.Where(s => s.Id == did).Select(s => s.Name).FirstOrDefaultAsync(ct) : null;
+        return Results.Ok(ToDto(staff, decidedBy));
+    }
+
     private static bool IsManager(StaffRole role) => role is StaffRole.Owner or StaffRole.Admin;
 
     private static Task<bool> IsLastManagerAsync(AppDbContext db, int staffId, CancellationToken ct) =>
@@ -122,5 +144,5 @@ public static class AdminEndpoints
     }
 
     private static StaffDto ToDto(Staff s, string? decidedBy) => new(
-        s.Id, s.LoginId, s.Name, s.Role, s.RequestedRole, s.Status, s.Department, s.Phone, s.CreatedAt, s.DecidedAt, decidedBy, s.RejectReason);
+        s.Id, s.LoginId, s.Name, s.Role, s.RequestedRole, s.Status, s.Department, s.Phone, s.CreatedAt, s.DecidedAt, decidedBy, s.RejectReason, s.HireDate);
 }

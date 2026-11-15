@@ -81,7 +81,8 @@ Patient (이름+생년월일 유일)
 1. **보고(간호사, `/report`)**: 환자 검색·등록 → 오늘 방문 열기(직전 사진 함께) → QR 발급 → 폰이 `/capture/{token}`에서 촬영(회전 보정·EXIF 제거·긴 변 2560px JPEG) → 서버 저장 후 SignalR `PhotoArrived` → 경과·메모로 보고 → `ReportSubmitted`가 원장 그룹으로.
 2. **결과 확인(원장, `/director`)**: 날짜별 받은 보고(새 보고는 알림음) → 전후 사진(확대 모드 · 5:5 비교 모드) → 소견 녹음(브라우저에서 16kHz 모노 WAV로 바꿔 업로드, 202) → `TranscriptionQueue` → `TranscriptionWorker`가 Whisper 변환 → `NoteUpdated` 푸시. 서버 재시작 시 대기 중 녹음 자동 재처리, 시작 시 모델 예열.
 3. **이전 기록 가져오기(`/import`, 서버 PC에서만)**: 사진을 가져오기 폴더에 올림/복사 → CSV 검사(엑셀 행 번호로 오류) → 백그라운드에서 트랜잭션 하나로 저장(실패 시 DB·복사 사진 모두 되돌림). 중복은 이름+생년월일 / 환자+날짜 / SHA-256으로 막음.
-4. **CRM 연동**: 설계만. CRM 정보가 없어 구현 가능안(CRM 무관 공통 기반 / 유형별 어댑터)과 대안으로 나눔 (`01/docs/crm-integration.md`). 1번 과제의 설계·구현·결과 보고서는 `01/docs/`.
+4. **인트라넷(02, `/intranet/*`)**: 홈(필독 공지·오늘 출퇴근·내 연차·오늘 휴가자·처리할 일) · 공지 · 연차(신청 → 승인, 근로기준법 §60 자동 계산, 팀 달력) · 출퇴근(병원 공인 IP 또는 30초마다 바뀌는 입구 QR) · 직원 주차(차량 등록 → 신청 → 주차면 배정, 번호 뒷자리 조회) · 주소록 · 설정. 설계는 `02/docs/intranet-design.md`.
+5. **CRM 연동**: 설계만. CRM 정보가 없어 구현 가능안(CRM 무관 공통 기반 / 유형별 어댑터)과 대안으로 나눔 (`01/docs/crm-integration.md`). 1번 과제의 설계·구현·결과 보고서는 `01/docs/`.
 
 ## 6. API 요약
 
@@ -113,7 +114,7 @@ Patient (이름+생년월일 유일)
 
 ## 8. 포트 · 경로 · 서비스
 
-| 항목 | 01 | 02 (예약) |
+| 항목 | 01 | 02 |
 | --- | --- | --- |
 | 개발 서버 | http://localhost:5011 | http://localhost:5012 |
 | Vite 개발 화면 | http://localhost:5173 (→ 5011, 로그인 경로는 5012로 프록시) | http://localhost:5174 (→ 5012 프록시) |
@@ -126,10 +127,11 @@ Patient (이름+생년월일 유일)
 
 - **로그인 (02가 발급, 01은 확인만)**: 직원 DB는 02 인트라넷에만 있습니다. 가입 신청 → 대표원장·관리자 승인 → 로그인. 02가 RS256 JWT 출입증(15분, sub·name·role)을 gm_access 쿠키로 주고, 01은 02의 `/.well-known/jwks.json` 공개키로 서명만 확인해 직무별로 막습니다. 갱신 토큰(14일)은 회전하고 재사용되면 그 직원의 세션을 모두 끊습니다. 퇴사·직무 변경은 늦어도 15분 안에 01·02 모두 반영. 자세한 표는 `02/README.md`.
 - 01 권한: 보고 = 대표원장·원장·간호사, 결과 확인·녹음 = 대표원장·원장, 가져오기 = 대표원장·관리자. 폰 촬영 `/capture/*`는 QR 토큰이 권한.
-- 같은 주소(goodmona.hsdevs.com)를 Cloudflare 터널이 경로로 나눕니다: `/login`·`/signup`·`/intranet*`·`/api/auth/*`·`/api/admin/*`·`/.well-known/*` → 02(5002), 나머지 → 01(5001). 그래서 쿠키 하나로 양쪽에 로그인됩니다.
+- 같은 주소(goodmona.hsdevs.com)를 Cloudflare 터널이 경로로 나눕니다: `/login`·`/signup`·`/intranet*`·`/api/auth/*`·`/api/admin/*`·`/api/intranet/*`·`/.well-known/*` → 02(5002), 나머지 → 01(5001). 그래서 쿠키 하나로 양쪽에 로그인됩니다.
 - 가져오기 API는 `Cf-Connecting-IP` 헤더(Cloudflare 경유 표시)가 있으면 기본 403.
 - 폰 화면에는 가린 이름(김\*수)만 보냄. 사진 응답은 `Cache-Control: private`.
-- 백업 없음: `C:\GoodMoNa\01\data`를 주기적으로 다른 곳에 복사해야 함.
+- 백업 없음: `C:\GoodMoNa\01\data`·`C:\GoodMoNa\02\data`를 주기적으로 다른 곳에 복사해야 함.
+- 02 인트라넷 권한: 공지 쓰기·휴가 승인·출퇴근 수정·주차 배정·설정 = 대표원장·관리자, 나머지(공지 읽기·연차 신청·출퇴근·주차 신청·주소록)는 로그인한 직원 모두. 업무 API는 모두 `/api/intranet/*`.
 - 비밀값(`cert.pem`, 터널 자격 증명 JSON)은 `C:\GoodMoNa\…\cloudflared`와 `%USERPROFILE%\.cloudflared`에만 두고 **절대 커밋하지 않음**(리포 공개).
 
 ## 10. 알려진 함정
@@ -138,5 +140,7 @@ Patient (이름+생년월일 유일)
 - Windows PowerShell 5.1: 네이티브 명령에 따옴표가 든 인자를 넘기면 깨짐(`sc.exe config`가 1639) → 서비스 경로는 레지스트리 `ImagePath`로 직접 씀. cloudflared는 삭제 안 된 터널에도 `deleted_at: 0001-01-01…`을 돌려줌.
 - 이 PC에는 Python이 없습니다(스토어 바로가기만). 스크립트는 node 또는 PowerShell.
 - Cloudflare: 요청 본문 100MB, 응답 대기 100초 제한 → 큰 업로드는 나눠서, 오래 걸리는 작업은 202 + 상태 조회.
+- 02의 새 업무 API를 `/api/intranet/*` 밖에 만들면 운영에서는 터널이 01로 보내 404가 납니다. 새 경로 접두어를 쓰려면 `01/deploy/install.ps1`의 `$intranetPaths`와 `01/web/vite.config.ts` 프록시에 함께 추가.
+- `dotnet run`을 `ASPNETCORE_ENVIRONMENT` 없이(`--no-launch-profile`) 돌리면 운영 포트(5001/5002)에 붙습니다. 개발은 `dotnet run --project …`(launchSettings 사용)으로.
 - Minimal API에서 multipart 폼의 문자열 필드는 `[FromForm]`을 붙여야 함(안 붙이면 쿼리스트링에서 찾음).
 - 배포는 관리자 권한(UAC 승인)이 필요해 사람이 "예"를 눌러야 합니다.

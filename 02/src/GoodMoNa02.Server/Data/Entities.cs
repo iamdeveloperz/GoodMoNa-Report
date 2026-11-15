@@ -46,6 +46,9 @@ public sealed class Staff
     public string? Department { get; set; }
     public string? Phone { get; set; }
 
+    /// <summary>입사일. 연차(근로기준법 §60, 입사일 기준) 계산에 씁니다. 관리자가 입력합니다.</summary>
+    public DateOnly? HireDate { get; set; }
+
     public int FailedLogins { get; set; }
     public DateTime? LockedUntil { get; set; }
 

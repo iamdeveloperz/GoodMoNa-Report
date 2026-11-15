@@ -120,7 +120,7 @@ cloudflared tunnel login            # 처음 한 번: 브라우저에서 hsdevs.
 
 서비스를 지울 때는 `.\deploy\uninstall.ps1` (데이터와 터널은 남김).
 
-화면과 API는 02 인트라넷의 로그인(승인된 직원만)으로 보호됩니다. 02와 함께 배포하려면 리포 맨 위의 `deploy/install-all.ps1`을 쓰세요(02 → 01 순서). 터널은 같은 주소에서 로그인 관련 경로(`/login`, `/signup`, `/intranet*`, `/api/auth/*`, `/api/admin/*`, `/.well-known/*`)를 02(localhost:5002)로, 나머지를 01로 보냅니다. 더 막고 싶으면 Cloudflare Access를 추가로 걸 수 있습니다(촬영 `/capture/*`, `/api/capture/*`는 제외).
+화면과 API는 02 인트라넷의 로그인(승인된 직원만)으로 보호됩니다. 02와 함께 배포하려면 리포 맨 위의 `deploy/install-all.ps1`을 쓰세요(02 → 01 순서). 터널은 같은 주소에서 로그인 관련 경로(`/login`, `/signup`, `/intranet*`, `/api/auth/*`, `/api/admin/*`, `/api/intranet/*`, `/.well-known/*`)를 02(localhost:5002)로, 나머지를 01로 보냅니다. 더 막고 싶으면 Cloudflare Access를 추가로 걸 수 있습니다(촬영 `/capture/*`, `/api/capture/*`는 제외).
 
 ## 보고서
 

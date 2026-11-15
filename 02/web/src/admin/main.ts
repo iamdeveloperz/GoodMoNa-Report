@@ -73,13 +73,16 @@ function render(): void {
 
   byId("all").innerHTML = rest.length === 0
     ? '<p class="empty">아직 직원이 없습니다.</p>'
-    : `<table class="people"><thead><tr><th>직원</th><th>상태</th><th>직무</th><th>결정</th><th></th></tr></thead><tbody>${rest
+    : `<table class="people"><thead><tr><th>직원</th><th>상태</th><th>직무</th><th>입사일</th><th>결정</th><th></th></tr></thead><tbody>${rest
         .map((s) => {
           const role = s.status === "Active" && s.id !== me?.id ? roleSelect(s, s.role) : ROLE_LABEL[s.role];
           const decided = s.decidedAt
             ? `${fmtDate(s.decidedAt)}${s.decidedBy ? ` · ${esc(s.decidedBy)}` : ""}${s.rejectReason ? `<br><small>${esc(s.rejectReason)}</small>` : ""}`
             : "";
-          return `<tr>${nameCell(s)}<td><span class="status ${s.status}">${STATUS_LABEL[s.status]}</span></td><td>${role}</td><td class="meta">${decided}</td><td><div class="acts">${staffActions(s)}</div></td></tr>`;
+          const hire = s.status === "Active"
+            ? `<input type="date" data-hire="${s.id}" value="${s.hireDate ?? ""}" aria-label="${esc(s.name)} 입사일">${s.hireDate ? "" : '<br><small class="err">연차 계산 불가</small>'}`
+            : (s.hireDate ?? "");
+          return `<tr>${nameCell(s)}<td><span class="status ${s.status}">${STATUS_LABEL[s.status]}</span></td><td>${role}</td><td>${hire}</td><td class="meta">${decided}</td><td><div class="acts">${staffActions(s)}</div></td></tr>`;
         })
         .join("")}</tbody></table>`;
 }
@@ -139,9 +142,25 @@ document.addEventListener("click", (e) => {
   if (b) void act(b.dataset.act!, Number(b.dataset.id));
 });
 
+// 입사일: 바꾸면 바로 저장 (연차 계산에 씀)
+document.addEventListener("change", async (e) => {
+  const input = e.target as HTMLInputElement;
+  const id = Number(input.dataset.hire);
+  if (!id) return;
+  const person = staff.find((s) => s.id === id);
+  try {
+    await api("PUT", `/api/admin/staff/${id}/profile`, { department: person?.department, phone: person?.phone, hireDate: input.value });
+    toast(`${person?.name ?? ""} 입사일을 저장했습니다`);
+  } catch (ex) {
+    toast(errorMessage(ex));
+  }
+  await load();
+});
+
 // 사용 중인 직원의 직무 변경 (승인 대기 행의 직무는 승인 버튼을 눌러야 반영)
 document.addEventListener("change", async (e) => {
   const sel = e.target as HTMLSelectElement;
+  if (!(sel instanceof HTMLSelectElement)) return;
   const id = Number(sel.dataset.role);
   const person = staff.find((s) => s.id === id);
   if (!id || person?.status !== "Active") return;

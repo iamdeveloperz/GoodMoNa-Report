@@ -4,6 +4,7 @@ using GoodMoNa02.Server.Auth;
 using GoodMoNa02.Server.Data;
 using GoodMoNa02.Server.Endpoints;
 using GoodMoNa02.Server.Infrastructure;
+using GoodMoNa02.Server.Intranet;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +47,11 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
-    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+    await ClinicSetup.EnsureAsync(db); // 병원 설정 한 줄 + 내장 공휴일
+}
 
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
@@ -56,6 +61,13 @@ app.UsePageGate(new Dictionary<string, string[]?>(StringComparer.OrdinalIgnoreCa
 {
     ["/intranet"] = null,
     ["/intranet/admin"] = Policies.ManageStaffRoles,
+    ["/intranet/settings"] = Policies.ManageStaffRoles,
+    ["/intranet/attendance/kiosk"] = Policies.ManageStaffRoles,
+    ["/intranet/notices"] = null,
+    ["/intranet/leave"] = null,
+    ["/intranet/attendance"] = null,
+    ["/intranet/parking"] = null,
+    ["/intranet/people"] = null,
 });
 app.UseStaticFiles();
 app.UseRateLimiter();
@@ -66,12 +78,29 @@ app.MapGet("/api/info", (ClinicClock clock) => Results.Ok(new { project = "GoodM
 app.MapAuthEndpoints();
 app.MapAdminEndpoints();
 
-// 화면: /login · /signup · /intranet (홈) · /intranet/admin (직원 승인). 정적 파일은 /intranet-assets/ 아래 (01과 겹치지 않게)
+// 인트라넷 업무 API는 모두 /api/intranet 아래 (Cloudflare 터널이 이 경로를 02로 보냄). 로그인한 직원이면 쓰고, 관리 기능은 엔드포인트마다 정책.
+var intranet = app.MapGroup("/api/intranet").RequireAuthorization();
+intranet.MapHomeEndpoints();
+intranet.MapNoticeEndpoints();
+intranet.MapLeaveEndpoints();
+intranet.MapAttendanceEndpoints();
+intranet.MapParkingEndpoints();
+intranet.MapSettingsEndpoints();
+
+// 화면: /login · /signup · /intranet (홈) · 공지 · 연차 · 출퇴근(+입구 QR) · 주차 · 주소록 · 직원 관리 · 설정.
+// 정적 파일은 /intranet-assets/ 아래 (01과 겹치지 않게)
 app.MapGet("/", () => Results.Redirect("/intranet"));
 app.MapFallbackToFile("/login", "login.html");
 app.MapFallbackToFile("/signup", "signup.html");
 app.MapFallbackToFile("/intranet", "intranet.html");
 app.MapFallbackToFile("/intranet/admin", "intranet-admin.html");
+app.MapFallbackToFile("/intranet/notices", "notices.html");
+app.MapFallbackToFile("/intranet/leave", "leave.html");
+app.MapFallbackToFile("/intranet/attendance", "attendance.html");
+app.MapFallbackToFile("/intranet/attendance/kiosk", "kiosk.html");
+app.MapFallbackToFile("/intranet/parking", "parking.html");
+app.MapFallbackToFile("/intranet/people", "people.html");
+app.MapFallbackToFile("/intranet/settings", "settings.html");
 
 app.Run();
 

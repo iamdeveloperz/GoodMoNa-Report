@@ -12,16 +12,11 @@
   <header class="masthead">
     <div class="masthead-inner">
       <a class="wordmark" href="/intranet">GoodMoNa<span>인트라넷</span></a>
-      <nav class="nav" aria-label="화면">
-        <a href="/intranet">홈</a>
-        <a href="/report" data-roles="Owner,Doctor,Nurse" hidden>보고</a>
-        <a href="/director" data-roles="Owner,Doctor" hidden>결과 확인</a>
-        <a href="/intranet/admin" data-roles="Owner,Admin" aria-current="page" hidden>직원 관리</a>
-      </nav>
+      <nav class="nav" id="nav" aria-label="화면"></nav>
       <span class="who" id="who"></span>
     </div>
   </header>
-  <main class="admin">
+  <main class="page admin">
     <section class="block">
       <div class="section-head"><span class="index">01</span><h2>승인 대기</h2><span class="grow"></span><span class="meta" id="pendingCount"></span></div>
       <p class="meta">직무는 신청한 값이 기본으로 골라져 있습니다. 확인하고 바꿔서 승인할 수 있습니다. 승인 전에는 로그인할 수 없습니다.</p>
@@ -29,7 +24,7 @@
     </section>
     <section class="block">
       <div class="section-head"><span class="index">02</span><h2>전체 직원</h2><span class="grow"></span><span class="meta" id="allCount"></span></div>
-      <p class="meta">직무를 바꾸거나 사용을 중지하면 늦어도 15분 안에 보고·결과 확인 화면까지 반영됩니다. 중지하면 그 직원의 로그인이 모두 끊깁니다.</p>
+      <p class="meta">직무를 바꾸거나 사용을 중지하면 늦어도 15분 안에 보고·결과 확인 화면까지 반영됩니다. 중지하면 그 직원의 로그인이 모두 끊깁니다. 입사일은 연차 계산(근로기준법 §60)에 쓰입니다.</p>
       <div id="all"></div>
     </section>
   </main>

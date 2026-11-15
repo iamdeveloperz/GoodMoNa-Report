@@ -27,7 +27,8 @@ public sealed record StaffDto(
     DateTime CreatedAt,
     DateTime? DecidedAt,
     string? DecidedBy,
-    string? RejectReason);
+    string? RejectReason,
+    DateOnly? HireDate);
 
 public sealed record ApproveRequest(string? Role);
 
